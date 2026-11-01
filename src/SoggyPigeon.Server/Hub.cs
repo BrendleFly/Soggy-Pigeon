@@ -198,7 +198,19 @@ public sealed class Hub
                     // it in memory only (the client records its own history).
                 }
             if (s.Results[0] is not null && s.Results[1] is not null)
+            {
                 EndSessionLocked(s, "complete", notifyIndex: null);
+                return;
+            }
+            // single result: if the match never fully started (either side
+            // never launched its game), this is a boot failure or pre-launch
+            // cancel — end it now instead of pinning the session waiting for
+            // a second result that can only come from a game stuck at a menu
+            if (!(s.Playing[0] && s.Playing[1]))
+            {
+                var waiting = s.Results[0] is null ? 0 : 1;
+                EndSessionLocked(s, "opponent could not start the game", notifyIndex: waiting);
+            }
         }
     }
 

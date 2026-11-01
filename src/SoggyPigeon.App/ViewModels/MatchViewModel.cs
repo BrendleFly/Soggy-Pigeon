@@ -136,9 +136,13 @@ public class MatchViewModel : ObservableObject
                 Reset("Session ended", e.Reason == "cancel" ? "cancelled" : e.Reason);
                 Phase = MatchPhase.Idle;
             }
-            else if (Phase is MatchPhase.Paired)
+            else if (Phase is MatchPhase.Paired or MatchPhase.Launching)
             {
-                Reset("Session ended", e.Reason);
+                Reset("Session ended", e.Reason == "cancel" ? "cancelled" : e.Reason);
+                // the opponent never got the match going — stand our boot
+                // down and dispose a game that is waiting at its menu
+                CancelInternal();
+                Phase = MatchPhase.Idle;
             }
         });
     }
@@ -377,6 +381,12 @@ public class MatchViewModel : ObservableObject
     private void CancelInternal(bool keepResult = false)
     {
         _bootCancelled = true;   // the background boot task must stand down
+        // A cancelled/failed boot leaves a live session server-side; report
+        // out so the server can end it (it ends immediately when the match
+        // never started) and the opponent isn't stuck behind
+        // "finish the current session first"
+        if (!keepResult && _paired is { } dead)
+            _ = Client.SendAsync(new ResultMsg { Session = dead.Session, Outcome = "disconnect", DurationS = 0 });
         _paired = null;
         _peer = null;
         _peerTcs = null;
