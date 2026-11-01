@@ -1,0 +1,63 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SoggyPigeon.App.ViewModels"
+        x:Class="SoggyPigeon.App.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Classes="pigeon"
+        Title="Soggy Pigeon"
+        Width="960" Height="660"
+        MinWidth="780" MinHeight="560">
+
+    <Panel>
+        <Grid RowDefinitions="Auto,*,Auto">
+            <!-- top bar -->
+            <Border Classes="topbar" Grid.Row="0">
+                <DockPanel>
+                    <TextBlock Classes="logo" Text="Soggy Pigeon" DockPanel.Dock="Left" />
+                    <Border Classes="pill" DockPanel.Dock="Right" Margin="14,0,0,0">
+                        <TextBlock Classes="pillText" Text="{Binding OnlineLabel}"
+                                   MaxWidth="280" TextTrimming="CharacterEllipsis" />
+                    </Border>
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Button x:Name="NavPlay" Classes="nav" Content="PLAY" Click="OnNavClick" Tag="Play" />
+                        <Button x:Name="NavGames" Classes="nav" Content="GAMES" Click="OnNavClick" Tag="Games" />
+                        <Button x:Name="NavHistory" Classes="nav" Content="HISTORY" Click="OnNavClick" Tag="History" />
+                        <Button x:Name="NavSettings" Classes="nav" Content="SETTINGS" Click="OnNavClick" Tag="Settings" />
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <!-- page host -->
+            <ContentControl x:Name="PageHost" Grid.Row="1" />
+
+            <!-- toasts -->
+            <ItemsControl x:Name="Toasts" Grid.Row="2" ItemsSource="{Binding Toasts}"
+                          HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                          Margin="0,0,0,14" MaxWidth="560">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="x:String">
+                        <Border Classes="toast">
+                            <TextBlock Text="{Binding}" TextWrapping="Wrap" />
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Grid>
+
+        <!-- first-run screen-name dialog -->
+        <Border x:Name="NameDialog" IsVisible="False" Background="#CC0A0B10">
+            <Panel>
+                <Border Classes="card" MaxWidth="420" VerticalAlignment="Center"
+                        HorizontalAlignment="Center" Margin="16" Background="{DynamicResource PigeonPanel}">
+                    <StackPanel Spacing="10">
+                        <TextBlock Classes="h1" Text="Welcome to Soggy Pigeon" />
+                        <TextBlock Classes="muted" TextWrapping="Wrap"
+                                   Text="Pick a screen name other players will see. A private device token is generated for this computer automatically — no passwords, no e-mail." />
+                        <TextBox x:Name="NameBox" Watermark="screen name (3–15 characters)" MaxLength="15" />
+                        <Button x:Name="NameOk" Classes="cta" Content="Start" Click="OnNameOk" />
+                    </StackPanel>
+                </Border>
+            </Panel>
+        </Border>
+    </Panel>
+</Window>

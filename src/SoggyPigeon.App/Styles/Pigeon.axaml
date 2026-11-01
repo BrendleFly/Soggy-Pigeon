@@ -1,0 +1,203 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Soggy Pigeon dark palette -->
+    <Styles.Resources>
+        <SolidColorBrush x:Key="PigeonBg">#FF12131A</SolidColorBrush>
+        <SolidColorBrush x:Key="PigeonPanel">#FF1A1C26</SolidColorBrush>
+        <SolidColorBrush x:Key="PigeonPanelAlt">#FF21242F</SolidColorBrush>
+        <SolidColorBrush x:Key="PigeonLine">#FF2E3140</SolidColorBrush>
+        <SolidColorBrush x:Key="PigeonText">#FFE8EAF2</SolidColorBrush>
+        <SolidColorBrush x:Key="PigeonMuted">#FF8A90A6</SolidColorBrush>
+        <SolidColorBrush x:Key="PigeonAccent">#FF7AA2F7</SolidColorBrush>
+        <SolidColorBrush x:Key="PigeonGood">#FF6FD08C</SolidColorBrush>
+        <SolidColorBrush x:Key="PigeonWarn">#FFE0B04C</SolidColorBrush>
+    </Styles.Resources>
+
+    <!-- page background -->
+    <Style Selector="Window.pigeon">
+        <Setter Property="Background" Value="{DynamicResource PigeonBg}" />
+        <Setter Property="FontFamily" Value="Inter, Segoe UI" />
+        <Setter Property="Foreground" Value="{DynamicResource PigeonText}" />
+    </Style>
+
+    <!-- top bar -->
+    <Style Selector="Border.topbar">
+        <Setter Property="Background" Value="{DynamicResource PigeonPanel}" />
+        <Setter Property="Padding" Value="16,10" />
+    </Style>
+    <Style Selector="TextBlock.logo">
+        <Setter Property="FontSize" Value="18" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Foreground" Value="{DynamicResource PigeonText}" />
+        <Setter Property="Margin" Value="0,0,18,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.nav">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="14,7" />
+        <Setter Property="Foreground" Value="{DynamicResource PigeonMuted}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="MinHeight" Value="36" />
+    </Style>
+    <Style Selector="Button.nav:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource PigeonPanelAlt}" />
+        <Setter Property="Foreground" Value="{DynamicResource PigeonText}" />
+    </Style>
+    <Style Selector="Button.nav.active">
+        <Setter Property="Background" Value="{DynamicResource PigeonPanelAlt}" />
+        <Setter Property="Foreground" Value="{DynamicResource PigeonAccent}" />
+    </Style>
+    <Style Selector="Border.pill">
+        <Setter Property="Background" Value="{DynamicResource PigeonPanelAlt}" />
+        <Setter Property="CornerRadius" Value="14" />
+        <Setter Property="Padding" Value="12,5" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.pillText">
+        <Setter Property="Foreground" Value="{DynamicResource PigeonMuted}" />
+        <Setter Property="FontSize" Value="12" />
+    </Style>
+
+    <!-- pages -->
+    <Style Selector="ScrollViewer.page">
+        <Setter Property="Padding" Value="24,18" />
+    </Style>
+    <Style Selector="TextBlock.h1">
+        <Setter Property="FontSize" Value="22" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Margin" Value="0,0,0,4" />
+    </Style>
+    <Style Selector="TextBlock.sub">
+        <Setter Property="Foreground" Value="{DynamicResource PigeonMuted}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Margin" Value="0,0,0,14" />
+    </Style>
+    <Style Selector="TextBlock.muted">
+        <Setter Property="Foreground" Value="{DynamicResource PigeonMuted}" />
+        <Setter Property="FontSize" Value="12.5" />
+    </Style>
+    <Style Selector="Border.card">
+        <Setter Property="Background" Value="{DynamicResource PigeonPanel}" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Padding" Value="16,13" />
+        <Setter Property="Margin" Value="0,0,0,10" />
+        <Setter Property="BorderBrush" Value="{DynamicResource PigeonLine}" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+
+    <!-- primary action -->
+    <Style Selector="Button.cta">
+        <Setter Property="Background" Value="{DynamicResource PigeonAccent}" />
+        <Setter Property="Foreground" Value="#FF10131C" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="Padding" Value="0,13" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="MinHeight" Value="48" />
+    </Style>
+    <Style Selector="Button.cta /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource PigeonAccent}" />
+    </Style>
+    <Style Selector="Button.cta:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#FF8FB1FF" />
+    </Style>
+    <Style Selector="Button.cta:disabled /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource PigeonPanelAlt}" />
+        <Setter Property="Foreground" Value="{DynamicResource PigeonMuted}" />
+    </Style>
+
+    <!-- ghost / secondary -->
+    <Style Selector="Button.ghost">
+        <Setter Property="Background" Value="{DynamicResource PigeonPanelAlt}" />
+        <Setter Property="Foreground" Value="{DynamicResource PigeonText}" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="14,8" />
+    </Style>
+
+    <!-- segmented choice (rematch policy) -->
+    <Style Selector="RadioButton.seg">
+        <Setter Property="Background" Value="{DynamicResource PigeonPanelAlt}" />
+        <Setter Property="Foreground" Value="{DynamicResource PigeonMuted}" />
+        <Setter Property="Padding" Value="16,9" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="MinHeight" Value="38" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{TemplateBinding Background}" CornerRadius="8"
+                        BorderBrush="{DynamicResource PigeonLine}" BorderThickness="2">
+                    <ContentPresenter Content="{TemplateBinding Content}"
+                                      Margin="{TemplateBinding Padding}"
+                                      VerticalAlignment="Center" HorizontalAlignment="Center"
+                                      TextBlock.Foreground="{TemplateBinding Foreground}" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="RadioButton.seg:checked">
+        <Setter Property="Background" Value="#FF2B3552" />
+        <Setter Property="Foreground" Value="{DynamicResource PigeonAccent}" />
+        <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+    <!-- gamepad/keyboard focus ring: the custom seg template has no built-in adorner -->
+    <!-- colour-only focus ring: thickness stays 2px so nothing reflows on focus -->
+    <Style Selector="RadioButton.seg:focus /template/ Border">
+        <Setter Property="BorderBrush" Value="{DynamicResource PigeonAccent}" />
+    </Style>
+
+    <!-- switches: accent thumb color -->
+    <Style Selector="ToggleSwitch">
+        <Setter Property="MinHeight" Value="30" />
+    </Style>
+    <Style Selector="ToggleSwitch /template/ Border#SwitchPage">
+        <Setter Property="Background" Value="{DynamicResource PigeonPanelAlt}" />
+    </Style>
+
+    <!-- status banner -->
+    <Style Selector="Border.banner">
+        <Setter Property="Background" Value="#FF1D2333" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Padding" Value="18,16" />
+        <Setter Property="BorderBrush" Value="#FF2B3552" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="TextBlock.bannerTitle">
+        <Setter Property="FontSize" Value="19" />
+        <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+    <Style Selector="TextBlock.bannerDetail">
+        <Setter Property="Foreground" Value="{DynamicResource PigeonMuted}" />
+        <Setter Property="Margin" Value="0,4,0,0" />
+    </Style>
+
+    <!-- toasts -->
+    <Style Selector="ItemsControl#Toasts">
+        <Setter Property="Margin" Value="0,8,0,0" />
+    </Style>
+    <Style Selector="Border.toast">
+        <Setter Property="Background" Value="#FF332A18" />
+        <Setter Property="BorderBrush" Value="{DynamicResource PigeonWarn}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="12,7" />
+        <Setter Property="Margin" Value="0,4,0,0" />
+    </Style>
+
+    <!-- history rows -->
+    <Style Selector="Border.historyRow">
+        <Setter Property="Background" Value="{DynamicResource PigeonPanel}" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="14,10" />
+        <Setter Property="Margin" Value="0,0,0,6" />
+    </Style>
+    <Style Selector="TextBlock.win">
+        <Setter Property="Foreground" Value="{DynamicResource PigeonGood}" />
+        <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+    <Style Selector="TextBlock.loss">
+        <Setter Property="Foreground" Value="#FFE0837E" />
+        <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+</Styles>

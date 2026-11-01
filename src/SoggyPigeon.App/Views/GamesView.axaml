@@ -1,0 +1,46 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SoggyPigeon.App.ViewModels"
+             x:Class="SoggyPigeon.App.Views.GamesView"
+             x:DataType="vm:PlayViewModel">
+
+    <ScrollViewer Classes="page">
+        <StackPanel MaxWidth="720" HorizontalAlignment="Left">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Classes="h1" Text="Games" />
+                <Button Classes="ghost" Content="Rescan games" Command="{Binding RescanCommand}"
+                        Grid.Column="1" VerticalAlignment="Top" />
+            </Grid>
+            <TextBlock Classes="sub" Text="{Binding ScanSummary}" Margin="0,2,0,12" />
+
+            <ItemsControl ItemsSource="{Binding Games}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:GameItemViewModel">
+                        <Border Classes="card">
+                            <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="15" />
+                                    <TextBlock Classes="muted" Text="{Binding StatusText}" />
+                                    <TextBlock Classes="muted" Text="{Binding CountText}"
+                                               Foreground="{DynamicResource PigeonAccent}"
+                                               IsVisible="{Binding CountText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                </StackPanel>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding On}"
+                                              IsEnabled="{Binding IsUsable}"
+                                              AutomationProperties.Name="{Binding Name}"
+                                              OffContent="" OnContent="" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock Classes="muted" Margin="0,10,0,0" TextWrapping="Wrap"
+                       IsVisible="{Binding !HasGames}"
+                       Text="Loading the game list… If this stays empty, the server can’t be reached — check the server address in SETTINGS." />
+            <TextBlock Classes="muted" Margin="0,10,0,0" TextWrapping="Wrap"
+                       IsVisible="{Binding HasGames}"
+                       Text="Activate a game to include it in your searches. Games appear here as soon as the server's manifest lists them — even before they're playable — and unlock when an install with a matching pigeon.id is detected. Each game is a separate project whose own page documents the exact original disc it needs." />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

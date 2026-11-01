@@ -1,0 +1,84 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SoggyPigeon.App.ViewModels"
+             x:Class="SoggyPigeon.App.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+
+    <ScrollViewer Classes="page">
+        <StackPanel MaxWidth="720" HorizontalAlignment="Left" Spacing="10">
+            <TextBlock Classes="h1" Text="Settings" />
+
+            <Border Classes="card">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Screen name" FontWeight="SemiBold" />
+                    <TextBox Text="{Binding Name}" Watermark="3–15 characters" MaxLength="15" />
+                    <TextBlock Classes="muted" Text="A private device token was generated for this computer automatically; it never leaves this machine except to the Soggy Pigeon server." />
+                </StackPanel>
+            </Border>
+
+            <Border Classes="card">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Server" FontWeight="SemiBold" />
+                    <TextBox Text="{Binding ServerAddress}" Watermark="host:port" />
+                    <TextBox Text="{Binding CertPin}" Watermark="certificate SHA-256 pin (leave empty for plain TCP)" />
+                    <TextBlock Classes="muted" Text="{Binding TlsLabel}" />
+                    <TextBlock Classes="muted" TextWrapping="Wrap"
+                               Text="Both take effect on the next search. The server prints its pin at startup (and writes it next to its data). A pin turns on TLS and refuses any server whose certificate doesn't match — set it whenever the server isn't just your own machine." />
+                </StackPanel>
+            </Border>
+
+            <Border Classes="card">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Netplay" FontWeight="SemiBold" />
+                    <TextBlock Classes="muted" TextWrapping="Wrap"
+                               Text="Comfort settings for online matches. Your choice is combined with your opponent's — the calmer of the two wins — so both machines always play with the same values." />
+
+                    <TextBlock Text="Rollback delay" FontWeight="SemiBold" Margin="0,6,0,0" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <RadioButton Classes="seg" GroupName="delay" Content="1" IsChecked="{Binding DelayIs1}" />
+                        <RadioButton Classes="seg" GroupName="delay" Content="2" IsChecked="{Binding DelayIs2}" />
+                        <RadioButton Classes="seg" GroupName="delay" Content="3" IsChecked="{Binding DelayIs3}" />
+                        <RadioButton Classes="seg" GroupName="delay" Content="4" IsChecked="{Binding DelayIs4}" />
+                        <RadioButton Classes="seg" GroupName="delay" Content="5" IsChecked="{Binding DelayIs5}" />
+                    </StackPanel>
+                    <TextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding InputDelayLabel}" />
+
+                    <TextBlock Text="Sync proof" FontWeight="SemiBold" Margin="0,6,0,0" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <RadioButton Classes="seg" GroupName="proof" Content="Every frame" IsChecked="{Binding ProofIs1}" />
+                        <RadioButton Classes="seg" GroupName="proof" Content="1-in-2" IsChecked="{Binding ProofIs2}" />
+                        <RadioButton Classes="seg" GroupName="proof" Content="1-in-4" IsChecked="{Binding ProofIs4}" />
+                        <RadioButton Classes="seg" GroupName="proof" Content="1-in-10" IsChecked="{Binding ProofIs10}" />
+                    </StackPanel>
+                    <TextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding DigestEveryLabel}" />
+                    <TextBlock Classes="muted" TextWrapping="Wrap"
+                               Text="Games only honour '1-in-N' once their build supports it; older builds simply prove every frame." />
+                </StackPanel>
+            </Border>
+
+            <Border Classes="card">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Game locations" FontWeight="SemiBold" />
+                    <TextBlock Classes="muted" TextWrapping="Wrap"
+                               Text="Soggy Pigeon detects installs on its own. If a game lives somewhere unusual, set its folder here. Each install must carry a pigeon.id file matching the supported build." />
+                    <ItemsControl ItemsSource="{Binding GamePaths}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:GamePathSetting">
+                                <StackPanel Spacing="4" Margin="0,6,0,0">
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13" />
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBox Text="{Binding Path_}" Watermark="(auto-detect)" />
+                                        <Button Classes="ghost" Grid.Column="1" Content="Browse…"
+                                                Margin="8,0,0,0" Click="OnBrowse" Tag="{Binding}" />
+                                    </Grid>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Classes="muted" Text="{Binding Version}" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

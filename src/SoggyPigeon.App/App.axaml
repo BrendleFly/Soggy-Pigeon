@@ -1,0 +1,11 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="SoggyPigeon.App.App"
+             RequestedThemeVariant="Dark">
+    <!-- §6.2: dark mode is the default and the only theme -->
+
+    <Application.Styles>
+        <FluentTheme />
+        <StyleInclude Source="/Styles/Pigeon.axaml" />
+    </Application.Styles>
+</Application>

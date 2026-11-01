@@ -1,0 +1,29 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- The app players launch is SoggyPigeon.exe (not SoggyPigeon.App.exe);
+         internal namespaces keep the SoggyPigeon.App prefix. -->
+    <AssemblyName>SoggyPigeon</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.2" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.2" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.2" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.2" />
+    <PackageReference Include="Avalonia.ReactiveUI" Version="11.3.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SoggyPigeon.Protocol\SoggyPigeon.Protocol.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- SDL2 game-controller backend (zlib licence): recognizes HID pads XInput cannot see -->
+    <None Include="native\SDL2.dll" Link="SDL2.dll" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

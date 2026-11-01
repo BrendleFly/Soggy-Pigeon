@@ -1,0 +1,12 @@
+# ---- build outputs ----
+bin/
+obj/
+publish/
+.vs/
+*.user
+
+# ---- server runtime data ----
+data/
+*.pfx
+tls-pin.txt
+server.log

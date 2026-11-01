@@ -1,0 +1,78 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SoggyPigeon.App.ViewModels"
+             x:Class="SoggyPigeon.App.Views.PlayView"
+             x:DataType="vm:PlayViewModel">
+
+    <ScrollViewer Classes="page">
+        <StackPanel MaxWidth="720" HorizontalAlignment="Left">
+            <TextBlock Classes="h1" Text="Play" />
+            <TextBlock Classes="sub" Text="{Binding GamesLine}" Margin="0,2,0,10" />
+
+            <!-- the single SEARCH button: top of the page, hidden while a session is live -->
+            <Button Classes="cta" Content="SEARCH" Command="{Binding SearchCommand}"
+                    IsVisible="{Binding !Match.IsBusy}"
+                    MinWidth="300" HorizontalAlignment="Stretch" />
+
+            <!-- session status (formerly the Match page): banner + Cancel while busy -->
+            <Border Classes="banner" IsVisible="{Binding Match.ShowBanner}" Margin="0,4,0,4">
+                <StackPanel>
+                    <TextBlock Classes="bannerTitle" Text="{Binding Match.Headline}" />
+                    <TextBlock Classes="bannerDetail" Text="{Binding Match.Detail}" TextWrapping="Wrap" />
+
+                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto"
+                          Margin="0,14,0,0" IsVisible="{Binding Match.IsBusy}">
+                        <TextBlock Classes="muted" Text="your seat" />
+                        <TextBlock Grid.Column="1" Text="{Binding Match.SeatLabel}" Margin="14,0,0,0"
+                                   MaxWidth="520" TextTrimming="CharacterEllipsis" TextWrapping="Wrap" />
+                        <TextBlock Classes="muted" Grid.Row="1" Text="opponent" />
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Match.Opponent}" Margin="14,0,0,0"
+                                   MaxWidth="520" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Classes="muted" Grid.Row="2" Text="game" />
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Match.GameName}" Margin="14,0,0,0"
+                                   MaxWidth="520" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Classes="muted" Grid.Row="3" Text="connection" />
+                        <TextBlock Grid.Row="3" Grid.Column="1" Margin="14,0,0,0"
+                                   Text="{Binding Match.ConnectionLine}" />
+                        <TextBlock Classes="muted" Grid.Row="4" Text="policy" />
+                        <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Match.PolicyLabel}" Margin="14,0,0,0" />
+                    </Grid>
+
+                    <Button Classes="ghost" Content="Cancel" Command="{Binding Match.CancelCommand}"
+                            IsVisible="{Binding Match.IsBusy}"
+                            Margin="0,14,0,0" />
+                </StackPanel>
+            </Border>
+
+            <!-- mode + policy (§3.3, §3.5) -->
+            <Border Classes="card" Margin="0,10,0,10">
+                <StackPanel>
+                    <TextBlock Text="Match type" FontWeight="SemiBold" Margin="0,0,0,6" />
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <RadioButton Classes="seg" GroupName="mode" Content="Any type"
+                                     IsChecked="{Binding AnyTypeMode}" />
+                        <RadioButton Classes="seg" GroupName="mode" Content="Casual"
+                                     IsChecked="{Binding CasualMode}" />
+                        <RadioButton Classes="seg" GroupName="mode" Content="Ranked (coming soon)" IsEnabled="False" />
+                    </StackPanel>
+                    <TextBlock Classes="muted" Margin="0,4,0,0" TextWrapping="Wrap"
+                               Text="Any type pairs with the first available match, whatever the mode." />
+                    <TextBlock Text="Rematch policy" FontWeight="SemiBold" Margin="0,12,0,6" />
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <RadioButton Classes="seg" GroupName="policy" Content="Session"
+                                     IsChecked="{Binding Rematch}" />
+                        <RadioButton Classes="seg" GroupName="policy" Content="Single"
+                                     IsChecked="{Binding !Rematch}" />
+                    </StackPanel>
+                    <TextBlock Classes="muted" Margin="0,8,0,0" TextWrapping="Wrap"
+                               Text="Session keeps the live connection between matches. Single returns to Soggy Pigeon after one match. Your choice applies to your side only." />
+                </StackPanel>
+            </Border>
+
+            <TextBlock Classes="muted" Margin="0,8,0,0" TextWrapping="Wrap"
+                       Text="The server pairs you with another player who shares any of your switched-on games, then boots it on both machines. Manage the switches on the GAMES page." />
+            <TextBlock Classes="muted" Margin="0,6,0,0" TextWrapping="Wrap"
+                       Text="Controller: D-pad or left stick moves the selection — Up reaches the page tabs. A or Start presses, B goes back." />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
