@@ -115,6 +115,12 @@ public sealed class GameLauncher : ObservableObject
             }
             psi.EnvironmentVariables["SOGGY_PIGEON_STATUS"] = statusPath;
             psi.EnvironmentVariables["SOGGY_PIGEON_ROLE"] = role == 1 ? "host" : "join";
+            // Owner-curated opening (NETPLAY_START_STATE.md): a recorded input
+            // script next to the game replays identically on both peers at
+            // match start, landing them in the same configured place.
+            var startScript = Path.Combine(installDir, "saves", "netplay-start.inputs");
+            if (File.Exists(startScript))
+                psi.EnvironmentVariables["SOGGY_NETPLAY_INPUTS"] = startScript;
             // Sync-proof cadence: Pong's runtime (our build) samples the CPU
             // authority raster every Nth sim tick when the title is proven
             // GPUREAD-free — the reconciled session value drives both peers.
