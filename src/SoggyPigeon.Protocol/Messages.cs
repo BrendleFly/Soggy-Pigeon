@@ -173,6 +173,104 @@ public sealed class ErrorMsg
     public string Detail { get; set; } = "";
 }
 
+// ---- lobbies (§3.7) -------------------------------------------------------
+
+/// <summary>One open lobby as shown in the room list.</summary>
+public sealed class LobbyRoomInfo
+{
+    public string Name { get; set; } = "";
+    public string Game { get; set; } = "";
+    public int Count { get; set; }
+    public bool Full { get; set; }
+    /// <summary>Short join code so a friend can find this specific room.</summary>
+    public string Code { get; set; } = "";
+}
+
+/// <summary>One lobby member, in line order. The first entry is the player
+/// Staying on (§3.7); the rest are Challengers front-to-back.</summary>
+public sealed class LobbyMemberInfo
+{
+    public string Name { get; set; } = "";
+    public bool You { get; set; }
+    public bool StayingOn { get; set; }
+}
+
+// client -> server
+
+public sealed class CreateLobbyMsg
+{
+    public string T { get; } = "create_lobby";
+    public string Game { get; set; } = "";
+    /// <summary>Room name; server falls back to "<name> lobby".</summary>
+    public string Name { get; set; } = "";
+    /// <summary>Preferred rollback input delay (frames) for lobby matches.</summary>
+    public int Delay { get; set; } = 2;
+    /// <summary>Preferred sync-proof cadence for lobby matches.</summary>
+    public int DigestEvery { get; set; } = 1;
+}
+
+public sealed class JoinLobbyMsg
+{
+    public string T { get; } = "join_lobby";
+    public string Code { get; set; } = "";
+}
+
+public sealed class LeaveLobbyMsg { public string T { get; } = "leave_lobby"; }
+
+/// <summary>Answer to a Ready prompt ("You're up"). Carries the sender's
+/// session-parameter preferences, reconciled like queue preferences.</summary>
+public sealed class LobbyReadyMsg
+{
+    public string T { get; } = "lobby_ready";
+    public int Delay { get; set; } = 2;
+    public int DigestEvery { get; set; } = 1;
+}
+
+// server -> client
+
+/// <summary>The full state of the lobby you are in; sent to every member on
+/// each change. Outside a match the first member is Staying on and no pair
+/// is playing; during a match Pair holds the two players' names.</summary>
+public sealed class LobbyStateMsg
+{
+    public string T { get; } = "lobby_state";
+    public string Id { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string Game { get; set; } = "";
+    public string Code { get; set; } = "";
+    public LobbyMemberInfo[] Members { get; set; } = System.Array.Empty<LobbyMemberInfo>();
+    public bool Playing { get; set; }
+    /// <summary>The two names currently playing, [0] = Staying on (P1).</summary>
+    public string[] Pair { get; set; } = System.Array.Empty<string>();
+    /// <summary>True when the receiving client created this lobby.</summary>
+    public bool Creator { get; set; }
+    /// <summary>True when the receiving client currently has an outstanding
+    /// Ready prompt (they're up next).</summary>
+    public bool YourTurn { get; set; }
+}
+
+/// <summary>All open lobbies; broadcast to everyone on any change.</summary>
+public sealed class LobbyListMsg
+{
+    public string T { get; } = "lobby_list";
+    public LobbyRoomInfo[] Rooms { get; set; } = System.Array.Empty<LobbyRoomInfo>();
+}
+
+/// <summary>Your turn to challenge: the Ready prompt. The server skips the
+/// player to the back of the line if no lobby_ready arrives in time.</summary>
+public sealed class YourTurnMsg
+{
+    public string T { get; } = "your_turn";
+    public string LobbyId { get; set; } = "";
+}
+
+/// <summary>The lobby is gone (creator closed it, or it emptied).</summary>
+public sealed class LobbyEndMsg
+{
+    public string T { get; } = "lobby_end";
+    public string Reason { get; set; } = "";
+}
+
 // ---- codec ---------------------------------------------------------------
 
 public static class PigeonMessages
@@ -195,5 +293,13 @@ public static class PigeonMessages
         ["peer"] = typeof(PeerMsg),
         ["session_end"] = typeof(SessionEndMsg),
         ["error"] = typeof(ErrorMsg),
+        ["create_lobby"] = typeof(CreateLobbyMsg),
+        ["join_lobby"] = typeof(JoinLobbyMsg),
+        ["leave_lobby"] = typeof(LeaveLobbyMsg),
+        ["lobby_ready"] = typeof(LobbyReadyMsg),
+        ["lobby_state"] = typeof(LobbyStateMsg),
+        ["lobby_list"] = typeof(LobbyListMsg),
+        ["your_turn"] = typeof(YourTurnMsg),
+        ["lobby_end"] = typeof(LobbyEndMsg),
     };
 }

@@ -47,6 +47,10 @@ public sealed class PigeonClient : ObservableObject
     public event Action<PeerMsg>? Peer;
     public event Action<SessionEndMsg>? SessionEnd;
     public event Action<ErrorMsg>? Error;
+    public event Action<LobbyStateMsg>? LobbyState;
+    public event Action<LobbyListMsg>? LobbyList;
+    public event Action<YourTurnMsg>? YourTurn;
+    public event Action<LobbyEndMsg>? LobbyEnd;
     public event Action? Disconnected;
 
     public async Task ConnectAsync(string hostPort, string token, string name, string? tlsPin = null)
@@ -152,6 +156,20 @@ public sealed class PigeonClient : ObservableObject
 
     public Task LeaveQueueAsync() => SendAsync(new LeaveQueueMsg());
 
+    // ---- lobbies (§3.7) -----------------------------------------------------
+
+    public Task CreateLobbyAsync(string game, string name, int delay, int digest)
+        => SendAsync(new CreateLobbyMsg { Game = game, Name = name, Delay = delay, DigestEvery = digest });
+
+    public Task JoinLobbyAsync(string code) => SendAsync(new JoinLobbyMsg { Code = code });
+
+    public Task LeaveLobbyAsync() => SendAsync(new LeaveLobbyMsg());
+
+    /// <summary>Answer the Ready prompt with this side's session-parameter
+    /// preferences (reconciled server-side like queue preferences).</summary>
+    public Task LobbyReadyAsync(int delay, int digest)
+        => SendAsync(new LobbyReadyMsg { Delay = delay, DigestEvery = digest });
+
     private async Task ReadLoopAsync(CancellationToken ct)
     {
         try
@@ -189,6 +207,10 @@ public sealed class PigeonClient : ObservableObject
             case PeerMsg m: Peer?.Invoke(m); break;
             case SessionEndMsg m: SessionEnd?.Invoke(m); break;
             case ErrorMsg m: Error?.Invoke(m); break;
+            case LobbyStateMsg m: LobbyState?.Invoke(m); break;
+            case LobbyListMsg m: LobbyList?.Invoke(m); break;
+            case YourTurnMsg m: YourTurn?.Invoke(m); break;
+            case LobbyEndMsg m: LobbyEnd?.Invoke(m); break;
         }
     }
 

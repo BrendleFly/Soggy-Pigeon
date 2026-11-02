@@ -9,10 +9,97 @@
             <TextBlock Classes="h1" Text="Play" />
             <TextBlock Classes="sub" Text="{Binding GamesLine}" Margin="0,2,0,10" />
 
+            <!-- the two ways to play (§3.7): quick match or an arcade lobby -->
+            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,8">
+                <RadioButton Classes="seg" GroupName="playmode" Content="Quick match"
+                             IsChecked="{Binding QuickMatchMode}" />
+                <RadioButton Classes="seg" GroupName="playmode" Content="Lobby"
+                             IsChecked="{Binding LobbyMode}" />
+            </StackPanel>
+
             <!-- the single SEARCH button: top of the page, hidden while a session is live -->
-            <Button Classes="cta" Content="SEARCH" Command="{Binding SearchCommand}"
-                    IsVisible="{Binding !Match.IsBusy}"
-                    MinWidth="300" HorizontalAlignment="Stretch" />
+            <StackPanel IsVisible="{Binding !LobbyMode}">
+                <Button Classes="cta" Content="SEARCH" Command="{Binding SearchCommand}"
+                        IsVisible="{Binding !Match.IsBusy}"
+                        MinWidth="300" HorizontalAlignment="Stretch" />
+            </StackPanel>
+
+            <!-- lobby: room list + create + join-by-code (when not in a lobby) -->
+            <StackPanel IsVisible="{Binding LobbyMode}">
+            <Border Classes="card" Margin="0,4,0,4" IsVisible="{Binding !InLobby}">
+                <StackPanel>
+                    <TextBlock Text="Open lobbies" FontWeight="SemiBold" Margin="0,0,0,6" />
+                    <ItemsControl ItemsSource="{Binding Rooms}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid ColumnDefinitions="*,Auto,Auto,Auto" Margin="0,2,0,2">
+                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Count}" VerticalAlignment="Center"
+                                               Margin="12,0,0,0" Classes="muted" />
+                                    <TextBlock Grid.Column="2" Text="{Binding Code}" VerticalAlignment="Center"
+                                               Margin="12,0,0,0" Classes="muted" />
+                                    <Button Grid.Column="3" Classes="ghost" Content="Join" Margin="12,0,0,0"
+                                            Command="{Binding $parent[ItemsControl].DataContext.JoinRoomCommand}"
+                                            CommandParameter="{Binding}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Classes="muted" Margin="0,4,0,0" TextWrapping="Wrap"
+                               Text="Two players at a time — winner stays on, everyone else waits their turn in line." />
+
+                    <TextBlock Text="Join with a code" FontWeight="SemiBold" Margin="0,12,0,6" />
+                    <Grid ColumnDefinitions="Auto,Auto" Margin="0,0,0,0">
+                        <TextBox Text="{Binding JoinCode}" Watermark="CODE" MaxLength="4"
+                                 MinWidth="120" />
+                        <Button Grid.Column="1" Classes="ghost" Content="Join" Margin="10,0,0,0"
+                                Command="{Binding JoinByCodeCommand}" />
+                    </Grid>
+
+                    <TextBlock Text="Create a lobby" FontWeight="SemiBold" Margin="0,12,0,6" />
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <ComboBox ItemsSource="{Binding UsableGames}" SelectedItem="{Binding NewLobbyGame}"
+                                  MinWidth="200">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <TextBox Text="{Binding NewLobbyName}" Watermark="Lobby name (optional)"
+                                 MinWidth="200" />
+                        <Button Classes="ghost" Content="Create" Command="{Binding CreateLobbyCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- lobby: the room you are in -->
+            <Border Classes="card" Margin="0,4,0,4" IsVisible="{Binding InLobby}">
+                <StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Text="{Binding LobbyHeader}" FontWeight="SemiBold"
+                                   TextTrimming="CharacterEllipsis" />
+                        <Button Grid.Column="1" Classes="ghost" Content="{Binding LeaveLobbyLabel}"
+                                Command="{Binding LeaveLobbyCommand}" />
+                    </Grid>
+                    <TextBlock Classes="sub" Text="{Binding LobbyStatusLine}" Margin="0,4,0,0" />
+
+                    <!-- your turn: the Ready prompt (§3.7) -->
+                    <Button Classes="cta" Content="You're up — Ready!" Command="{Binding ReadyCommand}"
+                            IsVisible="{Binding MyTurn}" Margin="0,10,0,0"
+                            MinWidth="300" HorizontalAlignment="Stretch" />
+
+                    <ItemsControl ItemsSource="{Binding LobbyMemberLines}" Margin="0,10,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding}" Margin="0,1,0,1" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+            </StackPanel>
 
             <!-- session status (formerly the Match page): banner + Cancel while busy -->
             <Border Classes="banner" IsVisible="{Binding Match.ShowBanner}" Margin="0,4,0,4">
@@ -44,7 +131,8 @@
                 </StackPanel>
             </Border>
 
-            <!-- mode + policy (§3.3, §3.5) -->
+            <!-- mode + policy: quick-match settings (§3.3, §3.5) -->
+            <StackPanel IsVisible="{Binding !LobbyMode}">
             <Border Classes="card" Margin="0,10,0,10">
                 <StackPanel>
                     <TextBlock Text="Match type" FontWeight="SemiBold" Margin="0,0,0,6" />
@@ -71,6 +159,8 @@
 
             <TextBlock Classes="muted" Margin="0,8,0,0" TextWrapping="Wrap"
                        Text="The server pairs you with another player who shares any of your switched-on games, then boots it on both machines. Manage the switches on the GAMES page." />
+            </StackPanel>
+
             <TextBlock Classes="muted" Margin="0,6,0,0" TextWrapping="Wrap"
                        Text="Controller: D-pad or left stick moves the selection — Up reaches the page tabs. A or Start presses, B goes back." />
         </StackPanel>

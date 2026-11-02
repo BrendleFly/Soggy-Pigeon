@@ -145,6 +145,26 @@ public sealed class ClientConnection
                 _hub.HandleLeaveQueue(_state);
                 break;
 
+            case CreateLobbyMsg createLobby:
+                if (_state is null) break;
+                _hub.HandleCreateLobby(_state, createLobby);
+                break;
+
+            case JoinLobbyMsg joinLobby:
+                if (_state is null) break;
+                _hub.HandleJoinLobby(_state, joinLobby);
+                break;
+
+            case LeaveLobbyMsg:
+                if (_state is null) break;
+                _hub.HandleLeaveLobby(_state);
+                break;
+
+            case LobbyReadyMsg lobbyReady:
+                if (_state is null) break;
+                _hub.HandleLobbyReady(_state, lobbyReady);
+                break;
+
             case HeartbeatMsg:
                 if (_state is null) break;
                 _hub.HandleHeartbeat(_state);

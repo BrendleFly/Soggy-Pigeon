@@ -163,6 +163,28 @@ public class PlayViewModel : ObservableObject
         _main = main;
         SearchCommand = new Command(Search, CanSearch);
         RescanCommand = new Command(Rescan);
+        JoinRoomCommand = new Command(JoinRoom);
+        JoinByCodeCommand = new Command(JoinByCode);
+        CreateLobbyCommand = new Command(CreateLobby, () => UsableGames.Count > 0);
+        LeaveLobbyCommand = new Command(LeaveLobby);
+        ReadyCommand = new Command(Ready);
+
+        var client = AppServices.Client;
+        // read-loop thread → marshal (Avalonia rule)
+        client.LobbyList += m => Ui(() =>
+        {
+            Rooms.Clear();
+            foreach (var r in m.Rooms) Rooms.Add(r);
+        });
+        client.LobbyState += m => Ui(() => ApplyLobbyState(m));
+        client.YourTurn += _ => Ui(() => _main.Toast("You're up!"));
+        client.LobbyEnd += e => Ui(() =>
+        {
+            _lobby = null;
+            Raise(nameof(InLobby));
+            Raise(nameof(MyTurn));
+            _main.Toast(e.Reason == "closed" ? "the lobby closed" : "the lobby ended");
+        });
     }
 
     public void OnNavigatedTo()
@@ -226,7 +248,9 @@ public class PlayViewModel : ObservableObject
     {
         Raise(nameof(HasUsableGames));
         Raise(nameof(GamesLine));
+        Raise(nameof(UsableGames));
         SearchCommand.RaiseCanExecute();
+        CreateLobbyCommand.RaiseCanExecute();
     }
 
     private bool CanSearch() => HasUsableGames && !_main.Match.IsBusy && !AppServices.Client.IsConnecting;
@@ -282,6 +306,134 @@ public class PlayViewModel : ObservableObject
         // raised on PigeonClient's read-loop thread — command notifications
         // must reach the UI thread before Avalonia touches bindings
         MainViewModel.Ui(() => SearchCommand.RaiseCanExecute());
+    }
+
+    // ---- lobbies (§3.7) -----------------------------------------------------
+
+    /// <summary>The two ways to play (§3.7): quick match (SEARCH) or an
+    /// arcade lobby. Quick match stays exactly as it was.</summary>
+    public bool LobbyMode
+    {
+        get => _lobbyMode;
+        set { if (Set(ref _lobbyMode, value)) Raise(nameof(QuickMatchMode)); }
+    }
+    private bool _lobbyMode;
+    public bool QuickMatchMode { get => !_lobbyMode; set { if (value) LobbyMode = false; } }
+
+    /// <summary>Open rooms for the list (name, game, count, code).</summary>
+    public ObservableCollection<LobbyRoomInfo> Rooms { get; } = new();
+
+    private LobbyStateMsg? _lobby;
+    public bool InLobby => _lobby is not null;
+    public string LobbyHeader => _lobby is { } l ? $"{l.Name} — code {l.Code}" : "";
+    /// <summary>Display lines for the member list, line order, first = Staying on.</summary>
+    public string[] LobbyMemberLines => _lobby?.Members
+        .Select(m => $"{m.Name}{(m.StayingOn ? " — Staying on" : "")}{(m.You ? "  (you)" : "")}")
+        .ToArray() ?? System.Array.Empty<string>();
+    public bool LobbyPlaying => _lobby?.Playing ?? false;
+    public bool MyTurn => _lobby?.YourTurn ?? false;
+    public bool LobbyCreator => _lobby?.Creator ?? false;
+    /// <summary>Creator leaving closes the room; members just step out (§3.7).</summary>
+    public string LeaveLobbyLabel => LobbyCreator ? "Close lobby" : "Leave lobby";
+
+    /// <summary>One line describing where things stand for THIS player.</summary>
+    public string LobbyStatusLine
+    {
+        get
+        {
+            if (_lobby is not { } l) return "";
+            if (l.YourTurn) return "You're up — press Ready";
+            if (l.Playing) return l.Pair.Length == 2 ? $"Now playing: {l.Pair[0]} vs {l.Pair[1]}" : "Now playing";
+            var mine = Array.IndexOf(l.Members, l.Members.FirstOrDefault(m => m.You));
+            if (l.Members.Length == 1) return mine == 0 ? "Staying on — waiting for a challenger" : "Waiting";
+            return mine <= 0 ? "Staying on — waiting for a challenger"
+                : $"{mine - 1} player{(mine - 1 == 1 ? "" : "s")} ahead of you";
+        }
+    }
+
+    /// <summary>Usable games for the "new lobby" picker.</summary>
+    public System.Collections.Generic.IReadOnlyList<GameItemViewModel> UsableGames
+        => Games.Where(g => g.IsUsable).ToList();
+
+    private GameItemViewModel? _newLobbyGame;
+    public GameItemViewModel? NewLobbyGame
+    {
+        get => _newLobbyGame;
+        set => Set(ref _newLobbyGame, value);
+    }
+
+    private string _newLobbyName = "";
+    public string NewLobbyName { get => _newLobbyName; set => Set(ref _newLobbyName, value); }
+
+    private string _joinCode = "";
+    public string JoinCode { get => _joinCode; set => Set(ref _joinCode, value); }
+
+    public Command JoinRoomCommand { get; }
+    public Command JoinByCodeCommand { get; }
+    public Command CreateLobbyCommand { get; }
+    public Command LeaveLobbyCommand { get; }
+    public Command ReadyCommand { get; }
+
+    private void ApplyLobbyState(LobbyStateMsg m)
+    {
+        _lobby = m;
+        Raise(nameof(InLobby));
+        Raise(nameof(LobbyHeader));
+        Raise(nameof(LobbyMemberLines));
+        Raise(nameof(LobbyPlaying));
+        Raise(nameof(MyTurn));
+        Raise(nameof(LobbyCreator));
+        Raise(nameof(LobbyStatusLine));
+        Raise(nameof(LeaveLobbyLabel));
+    }
+
+    private async void JoinRoom(object? param)
+    {
+        if (param is not LobbyRoomInfo room) return;
+        try
+        {
+            await ConnectForManifestAsync();
+            await AppServices.Client.JoinLobbyAsync(room.Code);
+        }
+        catch (Exception ex) { _main.Toast($"cannot join: {ex.Message}"); }
+    }
+
+    private async void JoinByCode()
+    {
+        var code = JoinCode.Trim();
+        if (code.Length == 0) return;
+        try
+        {
+            await ConnectForManifestAsync();
+            await AppServices.Client.JoinLobbyAsync(code);
+            JoinCode = "";
+        }
+        catch (Exception ex) { _main.Toast($"cannot join: {ex.Message}"); }
+    }
+
+    private async void CreateLobby()
+    {
+        var game = NewLobbyGame ?? UsableGames.FirstOrDefault();
+        if (game is null) { _main.Toast("no usable game for a lobby"); return; }
+        try
+        {
+            await ConnectForManifestAsync();
+            await AppServices.Client.CreateLobbyAsync(game.Game.Id, NewLobbyName,
+                AppServices.Data.InputDelay, AppServices.Data.DigestEvery);
+        }
+        catch (Exception ex) { _main.Toast($"cannot create: {ex.Message}"); }
+    }
+
+    private async void LeaveLobby()
+    {
+        try { await AppServices.Client.LeaveLobbyAsync(); }
+        catch (Exception ex) { _main.Toast($"cannot leave: {ex.Message}"); }
+    }
+
+    private async void Ready()
+    {
+        try { await AppServices.Client.LobbyReadyAsync(AppServices.Data.InputDelay, AppServices.Data.DigestEvery); }
+        catch (Exception ex) { _main.Toast($"cannot ready: {ex.Message}"); }
     }
 
     private static void Ui(Action a) => MainViewModel.Ui(a);
