@@ -27,13 +27,13 @@ public sealed class ManifestStore
     /// claim when it exists.</summary>
     public static ManifestStore Default() => new(new ManifestDoc
     {
-        Rev = 1,
+        Rev = 2,
         Games = new[]
         {
             new ManifestGame
             {
                 Id = "mock",
-                Name = "MockFighter (pipeline test)",
+                Name = "MockFighter (pipeline test, not a real game)",
                 Fingerprint = "mock-0.1.0",
                 Hints = new GameHints { Folders = new[] { "%LOCALAPPDATA%/MockFighter" }, Exe = new[] { "MockFighter.exe" } },
                 Params = System.Array.Empty<string>(),
@@ -41,7 +41,7 @@ public sealed class ManifestStore
             new ManifestGame
             {
                 Id = "kart",
-                Name = "MockKart (params test)",
+                Name = "MockKart (params test, not a real game)",
                 Fingerprint = "kart-0.1.0",
                 Hints = new GameHints { Folders = new[] { "%LOCALAPPDATA%/MockKart" }, Exe = new[] { "MockKart.exe" } },
                 Params = new[] { "laps", "class" },

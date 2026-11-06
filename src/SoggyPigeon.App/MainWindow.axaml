@@ -54,6 +54,7 @@
                         <TextBlock Classes="muted" TextWrapping="Wrap"
                                    Text="Pick a screen name other players will see. A private device token is generated for this computer automatically — no passwords, no e-mail." />
                         <TextBox x:Name="NameBox" Watermark="screen name (3–15 characters)" MaxLength="15" />
+                        <TextBlock x:Name="NameDialogError" Classes="loss" IsVisible="False" TextWrapping="Wrap" />
                         <Button x:Name="NameOk" Classes="cta" Content="Start" Click="OnNameOk" />
                     </StackPanel>
                 </Border>

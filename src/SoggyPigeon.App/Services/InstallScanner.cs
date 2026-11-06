@@ -17,7 +17,7 @@ public sealed class InstallResult
     public string StatusText => Status switch
     {
         InstallStatus.Ok => "installed",
-        InstallStatus.VersionMismatch => $"version differs — update (found {FoundFingerprint}, need {Game.Fingerprint})",
+        InstallStatus.VersionMismatch => $"version differs: update (found {FoundFingerprint}, need {Game.Fingerprint})",
         _ => "not installed",
     };
 }
@@ -35,7 +35,17 @@ public static class InstallScanner
                 var exe = Path.Combine(dir, exeName);
                 if (!File.Exists(exe)) continue;
                 var idPath = Path.Combine(dir, "pigeon.id");
-                var found = File.Exists(idPath) ? File.ReadAllText(idPath).Trim() : "";
+                // rescan runs on the UI thread — a transiently locked file
+                // must not throw (Haiku round 4)
+                string found;
+                try
+                {
+                    found = File.Exists(idPath) ? File.ReadAllText(idPath).Trim() : "";
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    found = "";
+                }
                 return new InstallResult
                 {
                     Game = game,

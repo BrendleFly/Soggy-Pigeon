@@ -109,15 +109,17 @@ public class PlayViewModel : ObservableObject
             var on = Games.Count(g => g.On && g.IsUsable);
             return on switch
             {
-                0 => "No games activated — activate some in GAMES first",
+                0 => "No games activated: activate some in GAMES first",
                 1 => "1 game activated",
                 _ => $"{on} games activated",
             };
         }
     }
 
-    private string _mode = "any";
-    /// <summary>"any" (default — first available match of any type) or "casual". Wire value carried by the queue.</summary>
+    private string _mode = "casual";
+    /// <summary>"casual" (the only visible type — Any type + Ranked are hidden
+    /// until ranked is fully working, owner 2026-11-06; "any" remains a valid
+    /// wire value). Wire value carried by the queue.</summary>
     public string Mode
     {
         get => _mode;
@@ -199,6 +201,10 @@ public class PlayViewModel : ObservableObject
             Games.Clear();
             foreach (var g in doc.Games)
             {
+                // Hidden until the port exists and is fully tested (owner
+                // 2026-11-06) — the manifest still lists it so the server
+                // never offers it, and revealing it is a one-line change.
+                if (g.Id == "hsfa") continue;
                 var item = new GameItemViewModel(_main, g);
                 item.Rescan();
                 item.PropertyChanged += (_, e) =>
@@ -325,10 +331,10 @@ public class PlayViewModel : ObservableObject
 
     private LobbyStateMsg? _lobby;
     public bool InLobby => _lobby is not null;
-    public string LobbyHeader => _lobby is { } l ? $"{l.Name} — code {l.Code}" : "";
+    public string LobbyHeader => _lobby is { } l ? $"{l.Name}: code {l.Code}" : "";
     /// <summary>Display lines for the member list, line order, first = Staying on.</summary>
     public string[] LobbyMemberLines => _lobby?.Members
-        .Select(m => $"{m.Name}{(m.StayingOn ? " — Staying on" : "")}{(m.You ? "  (you)" : "")}")
+        .Select(m => $"{m.Name}{(m.StayingOn ? ": Staying on" : "")}{(m.You ? "  (you)" : "")}")
         .ToArray() ?? System.Array.Empty<string>();
     public bool LobbyPlaying => _lobby?.Playing ?? false;
     public bool MyTurn => _lobby?.YourTurn ?? false;
@@ -342,11 +348,11 @@ public class PlayViewModel : ObservableObject
         get
         {
             if (_lobby is not { } l) return "";
-            if (l.YourTurn) return "You're up — press Ready";
+            if (l.YourTurn) return "You're up: press Ready";
             if (l.Playing) return l.Pair.Length == 2 ? $"Now playing: {l.Pair[0]} vs {l.Pair[1]}" : "Now playing";
             var mine = Array.IndexOf(l.Members, l.Members.FirstOrDefault(m => m.You));
-            if (l.Members.Length == 1) return mine == 0 ? "Staying on — waiting for a challenger" : "Waiting";
-            return mine <= 0 ? "Staying on — waiting for a challenger"
+            if (l.Members.Length == 1) return mine == 0 ? "Staying on: waiting for a challenger" : "Waiting";
+            return mine <= 0 ? "Staying on: waiting for a challenger"
                 : $"{mine - 1} player{(mine - 1 == 1 ? "" : "s")} ahead of you";
         }
     }

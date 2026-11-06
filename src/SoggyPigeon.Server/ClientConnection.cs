@@ -120,6 +120,13 @@ public sealed class ClientConnection
                     await TrySendAsync(new ErrorMsg { Kind = "bad_token", Detail = "token too short" }).ConfigureAwait(false);
                     return;
                 }
+                if (NameFilter.IsOffensive(hello.Name))
+                {
+                    // The app filters at edit time too, but this is the check
+                    // that actually matters — a modified client can bypass it.
+                    await TrySendAsync(new ErrorMsg { Kind = "bad_name", Detail = "screen name not allowed: pick another" }).ConfigureAwait(false);
+                    return;
+                }
                 _state = new ClientState { Connection = this, Token = hello.Token, Name = SanitizeName(hello.Name) };
                 _hub.ClientConnected(_state);
                 await TrySendAsync(_hub.HandleHello(_state)).ConfigureAwait(false);

@@ -21,7 +21,16 @@ public static class PunchService
     {
         var tag = SessionTag.Compute(sessionId);
         using var udp = new UdpClient(AddressFamily.InterNetwork);
-        udp.Client.Bind(new IPEndPoint(IPAddress.Any, localPort > 0 ? localPort : 0));
+        try
+        {
+            udp.Client.Bind(new IPEndPoint(IPAddress.Any, localPort > 0 ? localPort : 0));
+        }
+        catch (SocketException)
+        {
+            // port taken (a leftover game can still hold it): degrade to the
+            // relay path instead of wedging the pairing UI (Haiku round 4)
+            return null;
+        }
         udp.Client.ReceiveTimeout = 250;
 
         IPEndPoint? peerPublic = null;

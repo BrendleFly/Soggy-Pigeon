@@ -56,8 +56,19 @@ public sealed class TokenStore
 
     void Save()
     {
-        var tmp = _path + ".tmp";
-        File.WriteAllText(tmp, JsonSerializer.Serialize(_byTokenHash, new JsonSerializerOptions { WriteIndented = true }));
-        File.Move(tmp, _path, overwrite: true);
+        // per-process temp name + tolerance: two server instances sharing a
+        // data dir raced on the fixed ".tmp" name (a second instance is
+        // tolerated since the log-open hardening — Haiku round 4). Losing a
+        // save is low-stakes: tokens re-register on connect.
+        var tmp = _path + "." + Path.GetRandomFileName() + ".tmp";
+        try
+        {
+            File.WriteAllText(tmp, JsonSerializer.Serialize(_byTokenHash, new JsonSerializerOptions { WriteIndented = true }));
+            File.Move(tmp, _path, overwrite: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            try { File.Delete(tmp); } catch { /* best effort */ }
+        }
     }
 }

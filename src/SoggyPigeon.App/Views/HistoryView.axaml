@@ -8,7 +8,7 @@
     <ScrollViewer Classes="page">
         <StackPanel MaxWidth="720" HorizontalAlignment="Left">
             <TextBlock Classes="h1" Text="History" />
-            <TextBlock Classes="sub" Text="Past matches, kept on this computer only — keyed by your device token." />
+            <TextBlock Classes="sub" Text="Past matches, kept on this computer only." />
 
             <ItemsControl ItemsSource="{Binding Entries}">
                 <ItemsControl.ItemTemplate>
@@ -34,7 +34,13 @@
 
             <TextBlock Classes="muted" Margin="0,10,0,0"
                        IsVisible="{Binding !HasEntries}"
-                       Text="No matches yet — press SEARCH on the Play page." />
+                       Text="No matches yet: press SEARCH on the Play page." />
+
+            <Button Classes="ghost" Content="Clear history" Command="{Binding ClearHistoryCommand}"
+                    IsVisible="{Binding HasEntries}" Margin="0,10,0,0"
+                    HorizontalAlignment="Left" />
+
+            <TextBlock Classes="muted" Margin="0,10,0,0" Text="Soggy Pigeon 0.1.0" />
         </StackPanel>
     </ScrollViewer>
 </UserControl>

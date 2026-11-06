@@ -7,7 +7,7 @@ public static class Proto
     public const string Name = "pigeon-1";
 
     /// <summary>Client application version reported in hello.</summary>
-    public const string ClientVersion = "0.1.0";
+    public const string ClientVersion = "0.2.0";
 
     /// <summary>First byte of every UDP datagram (punch, ping, relay).</summary>
     public const byte DatagramMagic = (byte)'P';

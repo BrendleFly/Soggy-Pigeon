@@ -35,12 +35,27 @@ public class SettingsViewModel : ObservableObject
 {
     private readonly MainViewModel _main;
 
+    private string _nameError = "";
+
     public string Name
     {
         get => AppServices.Data.Name;
         set
         {
-            AppServices.Data.Name = value.Trim();
+            var name = value.Trim();
+            // Content filter (owner request 2026-11-06): don't save an
+            // offensive name; say so next to the box. The server rejects it
+            // too at Hello — this is just the friendly first line.
+            if (NameFilter.IsOffensive(name))
+            {
+                NameError = "not allowed: pick a different name";
+                // revert the box to the saved name so the refusal is obvious
+                // (the typed text would otherwise linger, Haiku round 4)
+                Raise(nameof(Name));
+                return;
+            }
+            NameError = "";
+            AppServices.Data.Name = name;
             AppServices.Data.Save();
             Raise();
             Raise(nameof(NameValid));
@@ -48,6 +63,15 @@ public class SettingsViewModel : ObservableObject
     }
 
     public bool NameValid => AppServices.Data.IsOnboarded;
+
+    /// <summary>Shown under the name box when an edit was refused.</summary>
+    public string NameError
+    {
+        get => _nameError;
+        private set { if (Set(ref _nameError, value)) Raise(nameof(HasNameError)); }
+    }
+
+    public bool HasNameError => _nameError.Length > 0;
 
     public string ServerAddress
     {
@@ -68,13 +92,8 @@ public class SettingsViewModel : ObservableObject
             AppServices.Data.CertPin = value.Trim();
             AppServices.Data.Save();
             Raise();
-            Raise(nameof(TlsLabel));
         }
     }
-
-    public string TlsLabel => string.IsNullOrWhiteSpace(AppServices.Data.CertPin)
-        ? "TLS off — plain TCP (fine for the home LAN)"
-        : "TLS on — the server's certificate must match this pin";
 
     // ---- netplay comfort (§ session parameters, reconciled per session) ----
 
@@ -90,14 +109,15 @@ public class SettingsViewModel : ObservableObject
             AppServices.Data.Save();
             Raise();
             Raise(nameof(InputDelayLabel));
+            RaiseDelayFlags();
         }
     }
 
     public string InputDelayLabel => InputDelay switch
     {
-        1 => "1 frame — instant, needs a very good connection",
-        2 => "2 frames — the classic default",
-        _ => $"{InputDelay} frames — calmer, for shaky connections",
+        1 => "1 frame: instant, needs a very good connection",
+        2 => "2 frames: default",
+        _ => $"{InputDelay} frames: safer for shaky connections",
     };
 
     /// <summary>Sync-proof cadence: prove every Nth frame. 1 = full proof
@@ -113,12 +133,35 @@ public class SettingsViewModel : ObservableObject
             AppServices.Data.Save();
             Raise();
             Raise(nameof(DigestEveryLabel));
+            RaiseProofFlags();
         }
     }
 
+    /// <summary>Re-read the checked-state getters on every radio. Without
+    /// this the group's own uncheck (a no-op `false` write) can leave a
+    /// radio visually checked while the VM disagrees — and clicking that
+    /// button then fires no change, so the hint label froze (owner bug
+    /// report 2026-11-06). Same treatment as the delay radios.</summary>
+    private void RaiseProofFlags()
+    {
+        Raise(nameof(ProofIs1));
+        Raise(nameof(ProofIs2));
+        Raise(nameof(ProofIs4));
+        Raise(nameof(ProofIs10));
+    }
+
+    private void RaiseDelayFlags()
+    {
+        Raise(nameof(DelayIs1));
+        Raise(nameof(DelayIs2));
+        Raise(nameof(DelayIs3));
+        Raise(nameof(DelayIs4));
+        Raise(nameof(DelayIs5));
+    }
+
     public string DigestEveryLabel => DigestEvery == 1
-        ? "Every frame — full proof (default)"
-        : $"Every {DigestEvery}th frame — lighter, slightly slower to catch a desync";
+        ? "Every frame: a desync is caught instantly. Costs the most CPU."
+        : $"Every {DigestEvery} frames: cheaper on the CPU; a desync can take up to {DigestEvery} frames to be caught.";
 
     // radio bindings (bool wrappers, same pattern as the Play page's mode radios)
     public bool DelayIs1 { get => InputDelay == 1; set { if (value) InputDelay = 1; } }
@@ -131,15 +174,33 @@ public class SettingsViewModel : ObservableObject
     public bool ProofIs4 { get => DigestEvery == 4; set { if (value) DigestEvery = 4; } }
     public bool ProofIs10 { get => DigestEvery == 10; set { if (value) DigestEvery = 10; } }
 
+    /// <summary>Owner toggle (2026-11-06): boot every launched game fullscreen.
+    /// Default on — delivered as PSX_FULLSCREEN to the framework's runtime;
+    /// games that don't know the variable simply ignore it.</summary>
+    public bool StartFullscreen
+    {
+        get => AppServices.Data.StartFullscreen;
+        set
+        {
+            AppServices.Data.StartFullscreen = value;
+            AppServices.Data.Save();
+            Raise();
+        }
+    }
+
     public ObservableCollection<GamePathSetting> GamePaths { get; } = new();
 
-    public string Version => $"Soggy Pigeon {Proto.ClientVersion} · {Proto.Name} · free, no ads";
+    public string Version => $"Soggy Pigeon {Proto.ClientVersion}";
 
     public SettingsViewModel(MainViewModel main) { _main = main; }
 
     public void OnNavigatedTo()
     {
-        var games = _main.Play.Games.Select(g => g.Game).ToList();
+        // The two mock games are pipeline fixtures, not installs the owner
+        // manages (owner 2026-11-06) — no location rows for them.
+        var games = _main.Play.Games.Select(g => g.Game)
+            .Where(g => g.Id is not ("mock" or "kart"))
+            .ToList();
         if (games.Count == 0) return; // manifest not fetched yet; refills on next visit
         var byId = GamePaths.ToDictionary(p => p.Game.Id, p => p);
         GamePaths.Clear();

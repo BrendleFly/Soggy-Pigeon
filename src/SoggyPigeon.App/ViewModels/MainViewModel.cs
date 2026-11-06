@@ -58,7 +58,7 @@ public class MainViewModel : ObservableObject
     }
 
     public string OnlineLabel => ConnectionState == "online"
-        ? $"● online — {OnlineCount} connected"
+        ? $"● online: {OnlineCount} connected"
         : $"● {ConnectionState}";
 
     /// <summary>True once the name dialog has completed; gates the pages.</summary>
@@ -94,7 +94,7 @@ public class MainViewModel : ObservableObject
             if (e.Kind == "version_mismatch")
                 Toast($"version mismatch: {e.Detail}");
             else
-                Toast($"server: {e.Kind} — {e.Detail}");
+                Toast($"server: {e.Kind}: {e.Detail}");
         });
     }
 

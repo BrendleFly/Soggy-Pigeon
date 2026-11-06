@@ -6,6 +6,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SoggyPigeon.App.Services;
 using SoggyPigeon.App.ViewModels;
+using SoggyPigeon.Protocol;
 
 namespace SoggyPigeon.App;
 
@@ -114,7 +115,19 @@ public partial class MainWindow : Window
     private void OnNameOk(object? sender, RoutedEventArgs e)
     {
         var name = NameBox.Text?.Trim() ?? "";
-        if (name.Length < 3) return;
+        if (name.Length < 3)
+        {
+            NameDialogError.Text = "3 to 15 characters, please.";
+            NameDialogError.IsVisible = true;
+            return;
+        }
+        if (NameFilter.IsOffensive(name))
+        {
+            NameDialogError.Text = "not allowed: pick a different name";
+            NameDialogError.IsVisible = true;
+            return;
+        }
+        NameDialogError.IsVisible = false;
         AppServices.Data.Name = name;
         AppServices.Data.Save();
         NameDialog.IsVisible = false;

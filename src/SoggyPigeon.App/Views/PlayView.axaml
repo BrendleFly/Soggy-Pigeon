@@ -9,12 +9,12 @@
             <TextBlock Classes="h1" Text="Play" />
             <TextBlock Classes="sub" Text="{Binding GamesLine}" Margin="0,2,0,10" />
 
-            <!-- the two ways to play (§3.7): quick match or an arcade lobby -->
+            <!-- the two ways to play (§3.7): quick match or an arcade lobby.
+                 Lobby hidden until the feature is fully implemented + tested
+                 (owner 2026-11-06) — Quick match is the only mode for now. -->
             <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,8">
                 <RadioButton Classes="seg" GroupName="playmode" Content="Quick match"
                              IsChecked="{Binding QuickMatchMode}" />
-                <RadioButton Classes="seg" GroupName="playmode" Content="Lobby"
-                             IsChecked="{Binding LobbyMode}" />
             </StackPanel>
 
             <!-- the single SEARCH button: top of the page, hidden while a session is live -->
@@ -47,7 +47,7 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                     <TextBlock Classes="muted" Margin="0,4,0,0" TextWrapping="Wrap"
-                               Text="Two players at a time — winner stays on, everyone else waits their turn in line." />
+                               Text="Two players at a time: winner stays on, everyone else waits their turn in line." />
 
                     <TextBlock Text="Join with a code" FontWeight="SemiBold" Margin="0,12,0,6" />
                     <Grid ColumnDefinitions="Auto,Auto" Margin="0,0,0,0">
@@ -86,7 +86,7 @@
                     <TextBlock Classes="sub" Text="{Binding LobbyStatusLine}" Margin="0,4,0,0" />
 
                     <!-- your turn: the Ready prompt (§3.7) -->
-                    <Button Classes="cta" Content="You're up — Ready!" Command="{Binding ReadyCommand}"
+                    <Button Classes="cta" Content="You're up: Ready!" Command="{Binding ReadyCommand}"
                             IsVisible="{Binding MyTurn}" Margin="0,10,0,0"
                             MinWidth="300" HorizontalAlignment="Stretch" />
 
@@ -136,33 +136,24 @@
             <Border Classes="card" Margin="0,10,0,10">
                 <StackPanel>
                     <TextBlock Text="Match type" FontWeight="SemiBold" Margin="0,0,0,6" />
+                    <!-- Any type + Ranked hidden until ranked is fully working
+                         (owner 2026-11-06) — Casual is the only type for now. -->
                     <StackPanel Orientation="Horizontal" Spacing="10">
-                        <RadioButton Classes="seg" GroupName="mode" Content="Any type"
-                                     IsChecked="{Binding AnyTypeMode}" />
                         <RadioButton Classes="seg" GroupName="mode" Content="Casual"
                                      IsChecked="{Binding CasualMode}" />
-                        <RadioButton Classes="seg" GroupName="mode" Content="Ranked (coming soon)" IsEnabled="False" />
                     </StackPanel>
-                    <TextBlock Classes="muted" Margin="0,4,0,0" TextWrapping="Wrap"
-                               Text="Any type pairs with the first available match, whatever the mode." />
                     <TextBlock Text="Rematch policy" FontWeight="SemiBold" Margin="0,12,0,6" />
+                    <!-- Single hidden until it is set up and tested
+                         (owner 2026-11-06); Session is the only policy for now. -->
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <RadioButton Classes="seg" GroupName="policy" Content="Session"
                                      IsChecked="{Binding Rematch}" />
-                        <RadioButton Classes="seg" GroupName="policy" Content="Single"
-                                     IsChecked="{Binding !Rematch}" />
                     </StackPanel>
                     <TextBlock Classes="muted" Margin="0,8,0,0" TextWrapping="Wrap"
-                               Text="Session keeps the live connection between matches. Single returns to Soggy Pigeon after one match. Your choice applies to your side only." />
+                               Text="Session keeps the live connection between matches. Your choice applies to your side only." />
                 </StackPanel>
             </Border>
-
-            <TextBlock Classes="muted" Margin="0,8,0,0" TextWrapping="Wrap"
-                       Text="The server pairs you with another player who shares any of your switched-on games, then boots it on both machines. Manage the switches on the GAMES page." />
             </StackPanel>
-
-            <TextBlock Classes="muted" Margin="0,6,0,0" TextWrapping="Wrap"
-                       Text="Controller: D-pad or left stick moves the selection — Up reaches the page tabs. A or Start presses, B goes back." />
         </StackPanel>
     </ScrollViewer>
 </UserControl>

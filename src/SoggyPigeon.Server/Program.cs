@@ -41,12 +41,25 @@ public static class Program
         var manifest = manifestPath is null ? ManifestStore.Default() : ManifestStore.LoadFile(manifestPath);
         dataDir ??= Path.Combine(AppContext.BaseDirectory, "data");
 
-        // log to a file so a hidden-window deployment still leaves a trace
+        // log to a file so a hidden-window deployment still leaves a trace.
+        // FileShare.Read: a second instance starting up must not die on the
+        // open (it crashed the process via an unhandled IOException, live
+        // 2026-11-05) — and if the file is still unwritable, run on with
+        // console-only logging rather than refusing to serve.
         if (!args.Contains("--no-logfile"))
         {
             Directory.CreateDirectory(dataDir);
             var logPath = Path.Combine(dataDir, "server.log");
-            Console.SetOut(TextWriter.Synchronized(new StreamWriter(logPath, append: true) { AutoFlush = true }));
+            try
+            {
+                var logFile = new FileStream(logPath, FileMode.Append, FileAccess.Write,
+                    FileShare.Read | FileShare.Delete);
+                Console.SetOut(TextWriter.Synchronized(new StreamWriter(logFile) { AutoFlush = true }));
+            }
+            catch (IOException)
+            {
+                Console.WriteLine($"  warning: {logPath} is locked by another process — logging to console only");
+            }
         }
 
         X509Certificate2? tlsCert = null;

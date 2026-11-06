@@ -20,10 +20,15 @@ public sealed class AppData
     /// and both peers run the reconciled value.</summary>
     public int InputDelay { get; set; } = 2;
     /// <summary>Preferred sync-proof cadence: prove every Nth frame (1..10;
-    /// 1 = prove every frame, the default). Server reconciles (lower wins).
-    /// Framework games only honour this once the upstream switch exists;
-    /// until then the boot argument is passed and politely ignored.</summary>
-    public int DigestEvery { get; set; } = 1;
+    /// default 2 = the sweet spot: half the every-frame CPU cost, a desync
+    /// still caught within 2 frames — imperceptible). Server reconciles
+    /// (lower/more-proving wins). Framework games only honour this once the
+    /// upstream switch exists; until then the boot argument is passed and
+    /// politely ignored.</summary>
+    public int DigestEvery { get; set; } = 2;
+    /// <summary>Owner preference (default on): boot every launched game in
+    /// fullscreen. Passed to the framework's runtime as PSX_FULLSCREEN.</summary>
+    public bool StartFullscreen { get; set; } = true;
     public Dictionary<string, string> GamePaths { get; set; } = new();   // gameId -> install folder
     public Dictionary<string, bool> GameEnabled { get; set; } = new();   // gameId -> switch state
 
@@ -135,6 +140,20 @@ public sealed class HistoryStore
     {
         Entries.Insert(0, entry);
         while (Entries.Count > 100) Entries.RemoveAt(Entries.Count - 1);
+        Save();
+    }
+
+    /// <summary>Wipe the list (owner-requested 'Clear history' button) and
+    /// persist the empty file immediately — unlike Add there is no later
+    /// write that could retry on the store's behalf.</summary>
+    public void Clear()
+    {
+        Entries.Clear();
+        Save();
+    }
+
+    private void Save()
+    {
         try
         {
             Directory.CreateDirectory(AppData.Dir);
@@ -144,9 +163,9 @@ public sealed class HistoryStore
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // the in-memory entry is already inserted — the UI stays
-            // consistent and the next Add retries the file write; letting
-            // this throw would crash on the UI thread after every match
+            // the in-memory list is already updated — the UI stays consistent
+            // and the next Add retries the file write; letting this throw
+            // would crash on the UI thread after every match
         }
     }
 }

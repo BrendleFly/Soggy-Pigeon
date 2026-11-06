@@ -79,7 +79,7 @@ public class MatchViewModel : ObservableObject
         }
     }
 
-    public string ConnectionLine => Relayed ? "server relay" : $"direct — {PingMs} ms";
+    public string ConnectionLine => Relayed ? "server relay" : $"direct: {PingMs} ms";
 
     private string _policyLabel = "";
     public string PolicyLabel { get => _policyLabel; private set => Set(ref _policyLabel, value); }
@@ -170,10 +170,12 @@ public class MatchViewModel : ObservableObject
         Opponent = p.OpponentName;
         // display name from the manifest (the wire carries the internal id)
         GameName = _main.Play.Games.FirstOrDefault(g => g.Game.Id == p.Game)?.Name ?? p.Game;
-        SeatLabel = p.Role == 1 ? "Player 1 — your pad drives the menus" : "Player 2 — player 1 navigates the menus";
+        SeatLabel = p.Role == 1 ? "Player 1" : "Player 2";
         PolicyLabel = p.Policy == "single" ? "single" : "session";
         Headline = $"Paired with {p.OpponentName}";
-        Detail = $"game: {p.Game} — connecting…";
+        // (was "game: X — connecting…"; a literal colon there read
+        // "game: X: connecting…" — restructured instead)
+        Detail = $"connecting to {p.Game}…";
         CancelCommand.RaiseCanExecute();
 
         _ = Task.Run(() => ConnectAndBootAsync(p));
@@ -204,7 +206,7 @@ public class MatchViewModel : ObservableObject
         {
             Relayed = punch is null;
             PingMs = punch?.PingMs ?? 0;
-            Detail = punch is null ? "direct failed — using server relay" : $"direct — {punch.PingMs} ms";
+            Detail = punch is null ? "direct failed: using server relay" : $"direct: {punch.PingMs} ms";
             Phase = MatchPhase.Launching;
             Headline = $"Launching {GameName}…";
         });
@@ -282,14 +284,15 @@ public class MatchViewModel : ObservableObject
             StatusFile.MatchState.Searching => $"Connecting to {Opponent}…",
             StatusFile.MatchState.Connected => $"Connected to {Opponent}",
             StatusFile.MatchState.Loading => "Loading…",
-            StatusFile.MatchState.Fight => $"In match — Round {snap.RoundP1}-{snap.RoundP2}",
+            StatusFile.MatchState.Fight => $"In match: Round {snap.RoundP1}-{snap.RoundP2}",
             StatusFile.MatchState.Result => "Match over",
             _ => Headline,
         };
         if (snap.PingMs > 0) PingMs = snap.PingMs;
-        Detail = $"in match — {GameName}"
-                 + (Relayed ? " (relay)" : "")
-                 + (snap.Message.Length > 0 ? $" — {snap.Message}" : "");
+        // Owner (2026-11-06): no grey detail line under the headline — the
+        // host-tick/resolved chatter is for the log, not the user. The seat /
+        // opponent / game / connection grid below carries what matters.
+        Detail = "";
     }
 
     private void OnGameExited(StatusFile.Snapshot snap)
@@ -334,7 +337,7 @@ public class MatchViewModel : ObservableObject
             : outcome == "loss" ? "You lost"
             : "Match finished";
         Detail = winnerWord.Length > 0 ? winnerWord
-            : "returned from the game — press Search to find the next opponent";
+            : "returned from the game: press Search to find the next opponent";
         CancelInternal(keepResult: true);
         // §2.8: Soggy Pigeon comes back to the foreground, ready to search again
         ForegroundReturned?.Invoke();
