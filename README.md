@@ -4,7 +4,7 @@ Play games online with strangers. It's currently only been tested on Windows 11,
 
 ## List of Compatible Games
 
-- Pong - The Next Level (PSX, U); [Pong-The-Next-Level-Decomp](https://github.com/BrendleFly/Pong-The-Next-Level-Decomp), which documents the exact disc it needs and how to verify your dump
+- Pong - The Next Level (PSX, U); [Pong-The-Next-Level-Decomp](https://github.com/BrendleFly/Pong-The-Next-Level-Decomp)
 
 ## Features
 
