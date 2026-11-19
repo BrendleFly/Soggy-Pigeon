@@ -57,6 +57,12 @@ public sealed class GameLauncher : ObservableObject
         // Owner preference (default on): boot fullscreen. The framework's
         // runtime honours PSX_FULLSCREEN; other games ignore it harmlessly.
         psi.EnvironmentVariables["PSX_FULLSCREEN"] = AppServices.Data.StartFullscreen ? "1" : "0";
+        // Always vsync OFF for Soggy Pigeon sessions (owner requirement,
+        // 2026-11-19): a 60 Hz swap interval adds up to a full frame of
+        // scanout latency before the player sees the result of their input,
+        // and a blocking swap can also stall the netplay pacer. Games that
+        // do not know PSX_VSYNC ignore it harmlessly.
+        psi.EnvironmentVariables["PSX_VSYNC"] = "0";
 
         var gameToml = Path.Combine(installDir, "game.toml");
         var frameworkPort = File.Exists(gameToml);
