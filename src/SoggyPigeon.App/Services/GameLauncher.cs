@@ -75,15 +75,30 @@ public sealed class GameLauncher : ObservableObject
             psi.ArgumentList.Add("--net-bind");
             psi.ArgumentList.Add($"0.0.0.0:{boot.LocalPort}");
             // Without a real punched endpoint the framework cannot link
-            // LAN-direct — abort rather than launch a session that can
-            // never connect ("-" is the punch-failed placeholder).
+            // LAN-direct. Fall back to the server's relay (the rendezvous
+            // endpoint the pairing carried): the session rides the pigeon
+            // relay envelope instead. No relay either: abort rather than
+            // launch a session that can never connect ("-" = punch failed).
             if (string.IsNullOrWhiteSpace(boot.Endpoint) || boot.Endpoint == "-")
             {
-                try { File.Delete(statusPath); } catch { }   // don't litter temp
-                return false;
+                if (string.IsNullOrWhiteSpace(boot.Relay) || boot.Relay == "-")
+                {
+                    NetLog.Write($"framework boot aborted: no direct endpoint and no relay (session {boot.Session[..8]})");
+                    try { File.Delete(statusPath); } catch { }   // don't litter temp
+                    return false;
+                }
+                psi.EnvironmentVariables["PSX_NET_FORCE_RELAY"] = "1";
+                psi.ArgumentList.Add("--net-relay-tag");
+                psi.ArgumentList.Add(boot.Tag);
+                psi.ArgumentList.Add("--net-peer");
+                psi.ArgumentList.Add(boot.Relay);
+                NetLog.Write($"framework boot via RELAY {boot.Relay} tag={boot.Tag} (session {boot.Session[..8]})");
             }
-            psi.ArgumentList.Add("--net-peer");
-            psi.ArgumentList.Add(boot.Endpoint);
+            else
+            {
+                psi.ArgumentList.Add("--net-peer");
+                psi.ArgumentList.Add(boot.Endpoint);
+            }
             psi.ArgumentList.Add("--net-slot");
             psi.ArgumentList.Add((role - 1).ToString());
             psi.ArgumentList.Add("--net-input-player");

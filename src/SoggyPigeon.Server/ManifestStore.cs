@@ -51,7 +51,9 @@ public sealed class ManifestStore
             {
                 Id = "pong",
                 Name = "Pong: The Next Level",
-                Fingerprint = "pong-0.0.3-sp1",
+                // sp2 = server-relay fallback in the framework (2026-11-06):
+                // peers must both run it, hence the bump
+                Fingerprint = "pong-0.0.4-sp2",
                 Hints = new GameHints { Folders = new[] { "%LOCALAPPDATA%/PongRecomp" }, Exe = new[] { "Pong_Recompiled.exe" } },
                 Params = System.Array.Empty<string>(),
             },

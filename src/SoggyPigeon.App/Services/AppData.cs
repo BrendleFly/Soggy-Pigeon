@@ -29,6 +29,15 @@ public sealed class AppData
     /// <summary>Owner preference (default on): boot every launched game in
     /// fullscreen. Passed to the framework's runtime as PSX_FULLSCREEN.</summary>
     public bool StartFullscreen { get; set; } = true;
+    /// <summary>The UDP port the punch + game session bind to is drawn from
+    /// this range (inclusive low, exclusive-ish high; Random.Shared.Next).
+    /// Defaults are the proven 40000-45000. Some carrier/hotspot NATs drop
+    /// outbound UDP aimed at high destination ports while carrying low ones
+    /// (rendezvous 7201 arrived, mapped 43953 died) — the low-port experiment
+    /// (sp-hotspot-probe) decides whether hotspot players need the range
+    /// moved down; until then this is a hidden settings.json knob.</summary>
+    public int PunchPortLow { get; set; } = 40000;
+    public int PunchPortHigh { get; set; } = 45000;
     public Dictionary<string, string> GamePaths { get; set; } = new();   // gameId -> install folder
     public Dictionary<string, bool> GameEnabled { get; set; } = new();   // gameId -> switch state
 
@@ -85,6 +94,16 @@ public sealed class AppData
 
     public bool IsGameEnabled(string gameId, bool installed) =>
         installed && GameEnabled.GetValueOrDefault(gameId, true);
+
+    /// <summary>A random session port inside the configured range, clamped
+    /// to sane bounds (1024 keeps us out of privileged ports on any OS the
+    /// game may port to later).</summary>
+    public int NextSessionPort()
+    {
+        var lo = Math.Clamp(PunchPortLow, 1024, 65534);
+        var hi = Math.Clamp(PunchPortHigh, lo + 1, 65535);
+        return Random.Shared.Next(lo, hi);
+    }
 
     public void SetGameEnabled(string gameId, bool on)
     {

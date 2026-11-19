@@ -7,6 +7,16 @@ namespace SoggyPigeon.App.Services;
 
 public sealed record PunchOutcome(IPEndPoint? Peer, int PingMs, bool SameNat);
 
+/// <summary>What the punch saw when it ended: the inputs the punch verdict
+/// (MatchViewModel.NatVerdict, the T6NO natText ladder) reads its rungs
+/// from. SeenSelf is our endpoint as the RENDEZVOUS observed it — the
+/// difference from LocalPort is the router rewriting the port; PeerSeen
+/// says whether the peer's punch reached the rendezvous (it only forwards
+/// the peer's endpoint over TCP once it did).</summary>
+public sealed record PunchDiag(bool Bound, IPEndPoint? SeenSelf, bool PeerSeen, int LocalPort);
+
+public sealed record PunchResult(PunchOutcome? Outcome, PunchDiag Diag);
+
 /// <summary>
 /// The client half of the punch (§4.3): bind the game's UDP port, punch the
 /// server's rendezvous until the peer's endpoint arrives, spam direct `hi`
@@ -15,7 +25,7 @@ public sealed record PunchOutcome(IPEndPoint? Peer, int PingMs, bool SameNat);
 /// </summary>
 public static class PunchService
 {
-    public static async Task<PunchOutcome?> PunchAsync(
+    public static async Task<PunchResult> PunchAsync(
         string sessionId, int role, IPEndPoint rendezvous, int localPort,
         Task<PeerMsg>? peerHintTask, double maxSeconds = Proto.PunchMaxSeconds)
     {
@@ -29,8 +39,11 @@ public static class PunchService
         {
             // port taken (a leftover game can still hold it): degrade to the
             // relay path instead of wedging the pairing UI (Haiku round 4)
-            return null;
+            return new PunchResult(null, new PunchDiag(false, null, false, localPort));
         }
+        // the port the punch actually left from (the OS assigns one when the
+        // caller passes 0): the verdict compares the rendezvous' view of it
+        var boundPort = ((IPEndPoint)udp.Client.LocalEndPoint!).Port;
         udp.Client.ReceiveTimeout = 250;
 
         IPEndPoint? peerPublic = null;
@@ -89,7 +102,11 @@ public static class PunchService
                 {
                     break; // receive timeout -> next tick
                 }
-                catch (ObjectDisposedException) { return null; }
+                catch (ObjectDisposedException)
+                {
+                    return new PunchResult(null,
+                        new PunchDiag(true, seenSelf, peerPublic is not null, boundPort));
+                }
 
                 if (!Datagram.TryDecode(data, out var pkt)) continue;
                 if (!pkt.SessionTag.AsSpan().SequenceEqual(tag)) continue;
@@ -124,15 +141,18 @@ public static class PunchService
             {
                 var sameNat = seenSelf is not null && peerPublic.Address.Equals(seenSelf.Address);
                 udp.Close(); // hand the port back to the game
-                return new PunchOutcome(peerPublic, (int)(pings.Min() / 1000.0), sameNat);
+                return new PunchResult(
+                    new PunchOutcome(peerPublic, (int)(pings.Min() / 1000.0), sameNat),
+                    new PunchDiag(true, seenSelf, true, boundPort));
             }
 
             await Task.Delay((int)(Proto.PunchIntervalSeconds * 1000));
         }
 
-        // timed out: no direct connection — the game will use the relay
+        // timed out: no direct connection — mock games fall back to the
+        // relay, framework games get the punch verdict instead of a boot
         udp.Close();
-        return null;
+        return new PunchResult(null, new PunchDiag(true, seenSelf, peerPublic is not null, boundPort));
     }
 
     private static IPEndPoint? DecodeEndpointSafe(byte[] payload)

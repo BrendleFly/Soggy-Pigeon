@@ -106,6 +106,7 @@ public class MatchViewModel : ObservableObject
     private DateTime _matchStartUtc;
     private InstallResult? _install;
     private IPEndPoint? _rendezvous;
+    private UpnpResult? _upnp;   // this session's router mapping, if UPnP gave one (taken down at session end)
 
     public MatchViewModel(MainViewModel main)
     {
@@ -192,26 +193,36 @@ public class MatchViewModel : ObservableObject
 
         // 2) punch for a direct connection (up to ~10 s), else fall back to relay.
         //    Punch from the port the game will rebind, so the NAT mapping stays warm.
-        var localPort = Random.Shared.Next(40000, 45000);
+        var localPort = AppServices.Data.NextSessionPort();
         Ui(() => Detail = "connecting (direct attempt)…");
-        PunchOutcome? punch = null;
+        // Best-effort UPnP first (the T6NO launcher's move): pin external =
+        // internal on the router so a strict NAT cannot rewrite the punch
+        // port, and learn the outermost address for the verdict. Failure is
+        // fine: the punch runs anyway.
+        UpnpResult? upnp = null;
+        PunchResult result;
         if (rendezvous is not null)
         {
-            punch = await PunchService.PunchAsync(p.Session, p.Role, rendezvous, localPort,
+            upnp = await UpnpMapper.MapAsync(localPort);
+            result = await PunchService.PunchAsync(p.Session, p.Role, rendezvous, localPort,
                 _peerTcs?.Task);
         }
+        else
+        {
+            result = new PunchResult(null, new PunchDiag(false, null, false, localPort));
+        }
+        _upnp = upnp;
+        var punch = result.Outcome;
+        if (upnp is { } u)
+            NetLog.Write($"upnp: mapped={u.Mapped} port={u.Port} local={u.LocalIp} ext={u.ExternalIp} err={u.Error}");
+        NetLog.Write(punch is null
+            ? $"punch FAILED (session {p.Session[..8]}, role {p.Role})"
+            : $"punch ok {punch.PingMs} ms to {punch.Peer} (session {p.Session[..8]}, role {p.Role})");
 
         var endpoint = punch?.Peer?.ToString() ?? "-";
-        Ui(() =>
-        {
-            Relayed = punch is null;
-            PingMs = punch?.PingMs ?? 0;
-            Detail = punch is null ? "direct failed: using server relay" : $"direct: {punch.PingMs} ms";
-            Phase = MatchPhase.Launching;
-            Headline = $"Launching {GameName}…";
-        });
 
-        // 3) find the installed game
+        // 3) find the installed game (before the launch UI: the punch verdict
+        //    below must not flash a "Launching…" headline it never keeps)
         var install = _main.Play.Games.FirstOrDefault(g => g.Game.Id == p.Game)?.Install;
         if (install?.ExePath is null)
         {
@@ -225,6 +236,48 @@ public class MatchViewModel : ObservableObject
         }
         _install = install;
         if (_bootCancelled) return;   // cancelled during the punch: stand down
+
+        // 3b) a dead punch no longer kills a framework match: the game rides
+        //     the server's relay (GameLauncher wires --net-peer to the
+        //     rendezvous + the relay envelope). The verdict banner remains
+        //     only for the no-relay-at-all case.
+        var framework = install.InstallDir is { } dir && File.Exists(Path.Combine(dir, "game.toml"));
+        if (punch is null && framework && rendezvous is not null)
+        {
+            NetLog.Write($"punch FAILED, relaying (session {p.Session[..8]}): "
+                + $"seen={(result.Diag.SeenSelf?.ToString() ?? "none")} peerSeen={result.Diag.PeerSeen} local={result.Diag.LocalPort}");
+            Ui(() =>
+            {
+                Relayed = true;
+                PingMs = 0;
+                Detail = "no direct link: playing through the server relay";
+                Phase = MatchPhase.Launching;
+                Headline = $"Launching {GameName}…";
+            });
+        }
+        else if (punch is null && result.Diag.Bound && framework)
+        {
+            var verdict = NatVerdict(result.Diag, upnp!);
+            NetLog.Write($"punch FAILED, no relay: {verdict} (session {p.Session[..8]})");
+            Ui(() =>
+            {
+                Relayed = true;
+                Headline = "Match didn't start";
+                Detail = verdict;
+                Phase = MatchPhase.Result;   // banner stays up for reading; Search is offered again
+                CancelInternal();
+            });
+            return;
+        }
+
+        Ui(() =>
+        {
+            Relayed = punch is null;
+            PingMs = punch?.PingMs ?? 0;
+            Detail = punch is null ? "direct failed: using server relay" : $"direct: {punch.PingMs} ms";
+            Phase = MatchPhase.Launching;
+            Headline = $"Launching {GameName}…";
+        });
 
         // 4) boot with the frozen handoff
         var statusPath = Path.Combine(Path.GetTempPath(), $"soggy-pigeon-status-{p.Session[..8]}.txt");
@@ -384,6 +437,12 @@ public class MatchViewModel : ObservableObject
     private void CancelInternal(bool keepResult = false)
     {
         _bootCancelled = true;   // the background boot task must stand down
+        // the session is over: take the UPnP mapping back down (every
+        // terminal path funnels through here, and a mapping without a game
+        // behind it is just a port left open on the router)
+        var upnp = _upnp;
+        _upnp = null;
+        if (upnp is { Mapped: true }) _ = UpnpMapper.UnmapAsync(upnp);
         // A cancelled/failed boot leaves a live session server-side; report
         // out so the server can end it (it ends immediately when the match
         // never started) and the opponent isn't stuck behind
@@ -409,5 +468,42 @@ public class MatchViewModel : ObservableObject
     {
         Headline = headline;
         Detail = detail;
+    }
+
+    /// <summary>The T6NO natText ladder (launcher_match.cpp) adapted to what
+    /// the punch and UPnP saw. One question per rung, in order: did the
+    /// server see OUR punch, did it see the peer's, did our router rewrite
+    /// the port (and is the outermost address a provider's, not ours), or
+    /// did everything look right and the packets still died. Public so the
+    /// test suite can pin the wording.</summary>
+    public static string NatVerdict(PunchDiag diag, UpnpResult upnp)
+    {
+        // no Seen reply for our punch: the rendezvous got nothing from us
+        if (diag.SeenSelf is null)
+            return "your PC or firewall blocked the game's traffic: the server got nothing from you. "
+                 + "Allow Soggy Pigeon through the firewall, public and private networks";
+        // the peer's endpoint only gets forwarded once their punch arrived:
+        // nothing forwarded means the server got nothing from them
+        if (!diag.PeerSeen)
+            return "your opponent's PC or router blocked the game's traffic: the server got nothing from them. "
+                 + "Your connection looks fine";
+
+        var ownChanged = diag.SeenSelf.Port != diag.LocalPort;
+        var cgnat = upnp.ExternalIp.Length > 0
+            && (UpnpMapper.IsPrivateIpv4(upnp.ExternalIp)
+                || diag.SeenSelf.Address.ToString() != upnp.ExternalIp);
+        var upnpHint = upnp.Mapped ? ""
+            : " Activating UPnP in the router settings lets the app open the port by itself.";
+        if (ownChanged && cgnat)
+            return "your internet provider shares one public address between customers (CGNAT), or a second "
+                 + "router sits in front of yours, and it changes the game's port: no setting on your PC or "
+                 + "router helps. Ask the provider for a public address";
+        if (ownChanged)
+            return "your router gives the game a different port than the one it asked for (mobile internet, "
+                 + "CGNAT or two routers do this): that is why the direct connection failed, not the firewall."
+                 + upnpHint;
+        return "both connections look normal, but the packets did not get through: a firewall on one side is "
+             + "dropping incoming UDP. Allow Soggy Pigeon through the firewall, public and private networks."
+             + upnpHint;
     }
 }
