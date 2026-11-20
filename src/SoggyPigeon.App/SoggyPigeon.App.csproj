@@ -8,6 +8,28 @@
     <!-- The app players launch is SoggyPigeon.exe (not SoggyPigeon.App.exe);
          internal namespaces keep the SoggyPigeon.App prefix. -->
     <AssemblyName>SoggyPigeon</AssemblyName>
+    <!-- Version metadata. Keep this in step with Proto.ClientVersion, which is
+         the single source of truth (publish/make-installer.ps1 reads it) - the
+         installer and the in-app updater both compare against that string, and
+         Windows shows this one in the app's Properties tab. -->
+    <Version>0.2.0</Version>
+    <Product>Soggy Pigeon</Product>
+    <Company>BrendleFly</Company>
+    <!-- ReadyToRun (2026-11-20): pre-JIT the app at publish time so the
+         player's machine does not compile thousands of methods on first
+         launch. Measured on the dev box: 2.3-2.8 s to first window -> 1.2-1.8 s
+         (+12 MB on disk). Startup, not throughput - the win is proportionally
+         larger on a slow CPU. R2R native code is tied to the runtime build, so
+         ship this together with a self-contained (or version-matched)
+         runtime; a mismatched runtime falls back to JIT harmlessly. -->
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <!-- R2R needs a concrete RID. win-x64 is the only target today (the app
+         ships an x64 SDL2.dll and a Windows-only input stack); override on
+         the command line with -r if a second target is ever added.
+         NOTE: setting a RID moves the Debug output to
+         bin/Debug/net8.0/win-x64/ instead of bin/Debug/net8.0/ — update any
+         desktop shortcut that points at the old flat path after this. -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,7 +37,11 @@
     <PackageReference Include="Avalonia.Desktop" Version="11.3.2" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.2" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.2" />
-    <PackageReference Include="Avalonia.ReactiveUI" Version="11.3.2" />
+    <!-- Avalonia.ReactiveUI removed 2026-11-19: nothing in the app uses
+         ReactiveObject / ReactiveCommand / IObservable / WhenAnyValue, and
+         the package dragged in System.Reactive + DynamicData + ReactiveUI
+         (~2.5 MB) for nothing. The VMs use the hand-rolled ObservableObject
+         in Infrastructure/. -->
   </ItemGroup>
 
   <ItemGroup>

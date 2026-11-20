@@ -6,7 +6,10 @@ public static class Proto
     /// <summary>Wire protocol version. Bump on any breaking message change.</summary>
     public const string Name = "pigeon-1";
 
-    /// <summary>Client application version reported in hello.</summary>
+    /// <summary>Client application version reported in hello, and the single
+    /// source of truth for the installer and the updater: the Inno Setup
+    /// script reads it, and the in-app updater compares against the release
+    /// feed. Bump this and the csproj &lt;Version&gt; together when releasing.</summary>
     public const string ClientVersion = "0.2.0";
 
     /// <summary>First byte of every UDP datagram (punch, ping, relay).</summary>

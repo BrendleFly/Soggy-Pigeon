@@ -226,6 +226,27 @@ public sealed class Hub
         }
     }
 
+    /// <summary>Relay one peer's connection candidates to the other (2026-11-20,
+    /// STUN-assisted punch). The candidates are opaque "ip:port" strings as far
+    /// as the server is concerned: it does not resolve, filter or store them,
+    /// so a client can never make the server probe an address of its choosing.
+    ///
+    /// An unknown session is ignored rather than answered — a candidate that
+    /// arrives after the session ended is just stale, and an error here would
+    /// be noise on a connection the app is still using.</summary>
+    public void HandleCandidates(ClientState client, string sessionId, string[] items)
+    {
+        ClientState? peer = null;
+        lock (_gate)
+        {
+            if (!_sessions.TryGetValue(sessionId, out var s) || s.Ended) return;
+            for (var i = 0; i < 2; i++)
+                if (ReferenceEquals(s.Clients[i], client)) { peer = s.Clients[1 - i]; break; }
+        }
+        if (peer is null) return;
+        _ = peer.Connection.TrySendAsync(new PeerCandidatesMsg { Session = sessionId, Items = items });
+    }
+
     public void HandleResult(ClientState client, string sessionId, string outcome, double durationS)
     {
         lock (_gate)

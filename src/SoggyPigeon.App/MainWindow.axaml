@@ -21,7 +21,6 @@
                     <StackPanel Orientation="Horizontal" Spacing="4">
                         <Button x:Name="NavPlay" Classes="nav" Content="PLAY" Click="OnNavClick" Tag="Play" />
                         <Button x:Name="NavGames" Classes="nav" Content="GAMES" Click="OnNavClick" Tag="Games" />
-                        <Button x:Name="NavHistory" Classes="nav" Content="HISTORY" Click="OnNavClick" Tag="History" />
                         <Button x:Name="NavSettings" Classes="nav" Content="SETTINGS" Click="OnNavClick" Tag="Settings" />
                     </StackPanel>
                 </DockPanel>

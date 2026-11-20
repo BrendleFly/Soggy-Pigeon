@@ -186,6 +186,10 @@ public sealed class ClientConnection
                 if (_state is null) break;
                 _hub.HandleResult(_state, result.Session, result.Outcome, result.DurationS);
                 break;
+            case CandidatesMsg candidates:
+                if (_state is null) break;
+                _hub.HandleCandidates(_state, candidates.Session, candidates.Items);
+                break;
         }
     }
 

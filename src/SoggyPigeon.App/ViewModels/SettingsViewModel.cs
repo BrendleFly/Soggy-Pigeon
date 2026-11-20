@@ -192,7 +192,106 @@ public class SettingsViewModel : ObservableObject
 
     public string Version => $"Soggy Pigeon {Proto.ClientVersion}";
 
-    public SettingsViewModel(MainViewModel main) { _main = main; }
+    // ---- updates (2026-11-20) ----------------------------------------------
+
+    /// <summary>The result of the most recent "check for updates", worded for
+    /// the UI. Empty means "not checked yet".</summary>
+    private string _updateStatus = "";
+    public string UpdateStatus { get => _updateStatus; private set => Set(ref _updateStatus, value); }
+
+    private bool _updateBusy;
+    public bool UpdateBusy { get => _updateBusy; private set => Set(ref _updateBusy, value); }
+
+    public Command CheckUpdateCommand { get; }
+
+    /// <summary>A newer version is downloaded and verified, ready to install.
+    /// Shown as a button rather than applied automatically: applying it
+    /// restarts the app, and that is the player's call.</summary>
+    private UpdateInfo? _updateReady;
+    public bool HasUpdateReady => _updateReady is not null;
+    public string UpdateReadyLabel => _updateReady is null
+        ? ""
+        : $"Version {_updateReady.Version} is downloaded. Restart to install it.";
+
+    public Command InstallUpdateCommand { get; }
+
+    public SettingsViewModel(MainViewModel main)
+    {
+        _main = main;
+        CheckUpdateCommand = new Command(async () => await CheckForUpdateAsync(), () => !UpdateBusy);
+        InstallUpdateCommand = new Command(InstallUpdate);
+    }
+
+    /// <summary>Ask GitHub whether a newer release exists, and if so download
+    /// and verify it. Failures are quiet: an unreachable update feed is a
+    /// normal condition (offline laptop, blocked network), not an error to put
+    /// in the player's face.</summary>
+    public async Task CheckForUpdateAsync()
+    {
+        if (UpdateBusy) return;
+        UpdateBusy = true;
+        UpdateStatus = "checking…";
+        try
+        {
+            var info = await UpdateService.CheckAsync();
+            if (info is null)
+            {
+                UpdateStatus = "could not reach the update server";
+                return;
+            }
+            if (info.Version.Length == 0)
+            {
+                UpdateStatus = $"version {Proto.ClientVersion} (no public releases yet)";
+                return;
+            }
+            if (UpdateService.CompareVersions(info.Version, Proto.ClientVersion) <= 0)
+            {
+                UpdateStatus = $"you're up to date (version {Proto.ClientVersion})";
+                return;
+            }
+            UpdateStatus = $"downloading version {info.Version}…";
+            var path = await UpdateService.DownloadAsync(info);
+            if (path is null)
+            {
+                UpdateStatus = $"version {info.Version} is available, but the download failed";
+                return;
+            }
+            _updateReady = info;
+            UpdateStatus = $"version {info.Version} is ready to install";
+            Raise(nameof(HasUpdateReady));
+            Raise(nameof(UpdateReadyLabel));
+        }
+        catch (Exception ex)
+        {
+            // The updater must never be the reason the app misbehaves.
+            UpdateStatus = $"could not check for updates ({ex.Message})";
+        }
+        finally
+        {
+            UpdateBusy = false;
+            CheckUpdateCommand.RaiseCanExecute();
+        }
+    }
+
+    /// <summary>Launch the verified installer and close the app: from here the
+    /// installer owns the files, so a half-swapped install is not possible.</summary>
+    private void InstallUpdate()
+    {
+        if (_updateReady is null) return;
+        var path = Path.Combine(Path.GetTempPath(), "soggy-pigeon-update",
+            $"SoggyPigeon-Setup-{_updateReady.Version}.exe");
+        if (!File.Exists(path)) { UpdateStatus = "the downloaded installer is missing"; return; }
+        if (!UpdateService.LaunchInstaller(path))
+        {
+            UpdateStatus = "could not start the installer";
+            return;
+        }
+        // The installer closes the running app itself; shutting down after a
+        // successful hand-off is the polite thing to do.
+        if (Avalonia.Application.Current?.ApplicationLifetime
+            is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
+            desktop.TryShutdown();
+    }
 
     public void OnNavigatedTo()
     {

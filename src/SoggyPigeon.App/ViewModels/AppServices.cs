@@ -6,13 +6,11 @@ namespace SoggyPigeon.App.ViewModels;
 public static class AppServices
 {
     public static AppData Data { get; private set; } = new();
-    public static HistoryStore History { get; private set; } = new();
     public static PigeonClient Client => PigeonClient.Instance;
 
     public static void LoadAll()
     {
         Data = AppData.Load();
         Data.EnsureToken();
-        History = HistoryStore.Load();
     }
 }

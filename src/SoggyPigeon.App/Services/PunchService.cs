@@ -27,7 +27,8 @@ public static class PunchService
 {
     public static async Task<PunchResult> PunchAsync(
         string sessionId, int role, IPEndPoint rendezvous, int localPort,
-        Task<PeerMsg>? peerHintTask, double maxSeconds = Proto.PunchMaxSeconds)
+        Task<PeerMsg>? peerHintTask, double maxSeconds = Proto.PunchMaxSeconds,
+        IEnumerable<string>? peerCandidates = null)
     {
         var tag = SessionTag.Compute(sessionId);
         using var udp = new UdpClient(AddressFamily.InterNetwork);
@@ -45,6 +46,30 @@ public static class PunchService
         // caller passes 0): the verdict compares the rendezvous' view of it
         var boundPort = ((IPEndPoint)udp.Client.LocalEndPoint!).Port;
         udp.Client.ReceiveTimeout = 250;
+
+        // 2026-11-20: the addresses the PEER advertised (its LAN addresses plus
+        // its STUN-discovered public mapping). The rendezvous' view of the
+        // peer is only ONE possible address; a NAT that maps per destination
+        // hands out a different one for us than for the rendezvous, which is
+        // exactly the case that used to force the relay. We punch every
+        // candidate in parallel until one answers, then lock onto it.
+        var candidates = new List<IPEndPoint>();
+        var seenCandidates = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        void AddCandidate(string? ep)
+        {
+            if (string.IsNullOrWhiteSpace(ep)) return;
+            if (!ep.Contains(':')) return;
+            var parts = ep.Split(':');
+            if (parts.Length != 2) return;
+            if (!IPAddress.TryParse(parts[0], out var ip)) return;
+            if (!int.TryParse(parts[1], out var port) || port <= 0 || port > 65535) return;
+            var e = new IPEndPoint(ip, port);
+            if (seenCandidates.Add(e.ToString()))
+                candidates.Add(e);
+        }
+
+        foreach (var c in peerCandidates ?? Array.Empty<string>())
+            AddCandidate(c);
 
         IPEndPoint? peerPublic = null;
 
@@ -77,15 +102,32 @@ public static class PunchService
             }
             else
             {
-                // 2) direct path: spam hi, and ping until we have enough samples
+                // 2) direct path: spam hi to the peer at EVERY address it
+                // advertised, not just the one the rendezvous saw. The first
+                // `hi` that comes back tells us which address actually works,
+                // and we lock onto that one for pings. Sending to all of them
+                // costs a few extra datagrams per tick and is the difference
+                // between connecting and falling back to the relay.
                 var hi = Datagram.Encode(Proto.DatagramType.Hi, tag, (byte)role);
                 await udp.SendAsync(hi, hi.Length, peerPublic);
+                for (var ci = 0; ci < candidates.Count; ci++)
+                {
+                    var c = candidates[ci];
+                    if (c.Equals(peerPublic)) continue;     // already sent above
+                    try { await udp.SendAsync(hi, hi.Length, c); } catch (SocketException) { }
+                }
 
                 if (pings.Count < Proto.PunchPingSamples)
                 {
                     var ping = Datagram.Encode(Proto.DatagramType.Ping, tag, (byte)role,
                         BitConverter.GetBytes(Stopwatch.GetTimestamp()));
                     await udp.SendAsync(ping, ping.Length, peerPublic);
+                    for (var ci = 0; ci < candidates.Count; ci++)
+                    {
+                        var c = candidates[ci];
+                        if (c.Equals(peerPublic)) continue;
+                        try { await udp.SendAsync(ping, ping.Length, c); } catch (SocketException) { }
+                    }
                 }
             }
 
@@ -117,12 +159,22 @@ public static class PunchService
                         seenSelf = DecodeEndpointSafe(pkt.Payload);
                         break;
                     case Proto.DatagramType.Hi:
-                        break; // direct path is open
+                        // The peer's `hi` arrived FROM the address that works.
+                        // Nominate it (2026-11-20): the rendezvous' view of the
+                        // peer can be a different mapping than the one that
+                        // actually carries our traffic, and everything after
+                        // this point (pings, the outcome the game is handed)
+                        // must use the address that demonstrably answers.
+                        if (peerPublic is null || !anyEp.Equals(peerPublic))
+                            peerPublic = anyEp;
+                        break;
                     case Proto.DatagramType.Ping:
-                        if (peerPublic is not null)
                         {
+                            // answer whoever asked, from whatever address they
+                            // reached us on - that is the pair that works
                             var pong = Datagram.Encode(Proto.DatagramType.Pong, tag, (byte)role, pkt.Payload);
-                            await udp.SendAsync(pong, pong.Length, peerPublic);
+                            try { await udp.SendAsync(pong, pong.Length, anyEp); } catch (SocketException) { }
+                            if (peerPublic is null) peerPublic = anyEp;
                         }
                         break;
                     case Proto.DatagramType.Pong:

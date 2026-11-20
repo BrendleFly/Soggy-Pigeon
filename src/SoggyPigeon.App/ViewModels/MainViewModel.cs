@@ -4,14 +4,13 @@ using SoggyPigeon.App.Services;
 
 namespace SoggyPigeon.App.ViewModels;
 
-public enum AppPage { Play, Games, History, Settings }
+public enum AppPage { Play, Games, Settings }
 
 /// <summary>Shell state: current page, online count, connection errors.</summary>
 public class MainViewModel : ObservableObject
 {
     public PlayViewModel Play { get; }
     public MatchViewModel Match { get; }
-    public HistoryViewModel HistoryVm { get; }
     public SettingsViewModel Settings { get; }
 
     private AppPage _page = AppPage.Play;
@@ -27,7 +26,6 @@ public class MainViewModel : ObservableObject
                 {
                     AppPage.Play => (Action?)Play.OnNavigatedTo,
                     AppPage.Games => Play.OnNavigatedTo,   // same VM backs both pages
-                    AppPage.History => HistoryVm.OnNavigatedTo,
                     AppPage.Settings => Settings.OnNavigatedTo,
                     _ => null,
                 })?.Invoke();
@@ -39,7 +37,6 @@ public class MainViewModel : ObservableObject
     {
         AppPage.Play => "Play",
         AppPage.Games => "Games",
-        AppPage.History => "History",
         AppPage.Settings => "Settings",
         _ => "",
     };
@@ -72,7 +69,6 @@ public class MainViewModel : ObservableObject
     {
         Play = new PlayViewModel(this);
         Match = new MatchViewModel(this);
-        HistoryVm = new HistoryViewModel();
         Settings = new SettingsViewModel(this);
 
         var client = AppServices.Client;

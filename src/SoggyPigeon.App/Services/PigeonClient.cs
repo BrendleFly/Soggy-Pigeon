@@ -45,6 +45,7 @@ public sealed class PigeonClient : ObservableObject
     public event Action<CountsMsg>? Counts;
     public event Action<PairedMsg>? Paired;
     public event Action<PeerMsg>? Peer;
+    public event Action<PeerCandidatesMsg>? PeerCandidates;
     public event Action<SessionEndMsg>? SessionEnd;
     public event Action<ErrorMsg>? Error;
     public event Action<LobbyStateMsg>? LobbyState;
@@ -149,6 +150,13 @@ public sealed class PigeonClient : ObservableObject
 
     public Task RequestManifestAsync() => SendAsync(new ManifestReqMsg());
 
+    /// <summary>Advertise our connection candidates to the peer (2026-11-20).
+    /// Fire-and-forget by design: the punch does not wait on this, it runs
+    /// against whatever candidates have arrived by the time it needs them,
+    /// and STUN is a best-effort extra address, never a precondition.</summary>
+    public Task SendCandidatesAsync(string sessionId, string[] items)
+        => SendAsync(new CandidatesMsg { Session = sessionId, Items = items });
+
     public Task EnterQueueAsync(QueueGame[] games, string mode, string policy,
         int delay = 2, int digestEvery = 1)
         => SendAsync(new EnterQueueMsg { Games = games, Mode = mode, Policy = policy,
@@ -205,6 +213,7 @@ public sealed class PigeonClient : ObservableObject
             case CountsMsg m: Counts?.Invoke(m); break;
             case PairedMsg m: Paired?.Invoke(m); break;
             case PeerMsg m: Peer?.Invoke(m); break;
+            case PeerCandidatesMsg m: PeerCandidates?.Invoke(m); break;
             case SessionEndMsg m: SessionEnd?.Invoke(m); break;
             case ErrorMsg m: Error?.Invoke(m); break;
             case LobbyStateMsg m: LobbyState?.Invoke(m); break;

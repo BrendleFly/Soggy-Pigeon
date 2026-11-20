@@ -158,6 +158,34 @@ public sealed class PeerMsg
     public bool SameNat { get; set; }
 }
 
+/// <summary>Connection candidates this peer is offering, sent to the server
+/// right after pairing so it can relay them to the other side (2026-11-20).
+///
+/// Before this, each side only learned ONE address to punch: whatever the
+/// rendezvous saw as the sender's source port. That works for cone NATs and
+/// dies on anything that maps per destination - the hotspot case that forced
+/// the relay. Advertising our own addresses instead means the peer can try
+/// several: our LAN addresses (so two players behind the same router find
+/// each other directly, even when the router refuses to hairpin), our
+/// STUN-discovered public mapping (which can differ from the address the
+/// rendezvous sees), and the address we bind to locally.
+///
+/// Entries are "ip:port". v1 sends them once; there is no renegotiation.</summary>
+public sealed class CandidatesMsg
+{
+    public string T { get; } = "candidates";
+    public string Session { get; set; } = "";
+    public string[] Items { get; set; } = System.Array.Empty<string>();
+}
+
+/// <summary>The peer's candidates, relayed by the server (see CandidatesMsg).</summary>
+public sealed class PeerCandidatesMsg
+{
+    public string T { get; } = "peer_candidates";
+    public string Session { get; set; } = "";
+    public string[] Items { get; set; } = System.Array.Empty<string>();
+}
+
 public sealed class SessionEndMsg
 {
     public string T { get; } = "session_end";
@@ -291,6 +319,8 @@ public static class PigeonMessages
         ["counts"] = typeof(CountsMsg),
         ["paired"] = typeof(PairedMsg),
         ["peer"] = typeof(PeerMsg),
+        ["candidates"] = typeof(CandidatesMsg),
+        ["peer_candidates"] = typeof(PeerCandidatesMsg),
         ["session_end"] = typeof(SessionEndMsg),
         ["error"] = typeof(ErrorMsg),
         ["create_lobby"] = typeof(CreateLobbyMsg),

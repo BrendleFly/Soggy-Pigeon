@@ -102,6 +102,10 @@ public class MatchViewModel : ObservableObject
     private PairedMsg? _paired;
     private PeerMsg? _peer;
     private TaskCompletionSource<PeerMsg>? _peerTcs;
+    /// <summary>Set once the peer's candidate list arrives (2026-11-20). The
+    /// punch waits on it briefly, then proceeds without it: candidates are an
+    /// optimisation, never a requirement.</summary>
+    private TaskCompletionSource<string[]>? _peerCandidateTcs;
     private GameLauncher? _launcher;
     private DateTime _matchStartUtc;
     private InstallResult? _install;
@@ -129,6 +133,13 @@ public class MatchViewModel : ObservableObject
         {
             _peer = m;
             _peerTcs?.TrySetResult(m);
+        });
+        c.PeerCandidates += m => Ui(() =>
+        {
+            _peerCandidateTcs?.TrySetResult(m.Items);
+            _peerCandidateTcs = null;
+            if (m.Items.Length > 0)
+                NetLog.Write($"candidates: peer sent {m.Items.Length} ({string.Join(", ", m.Items)})");
         });
         c.SessionEnd += e => Ui(() =>
         {
@@ -204,8 +215,24 @@ public class MatchViewModel : ObservableObject
         if (rendezvous is not null)
         {
             upnp = await UpnpMapper.MapAsync(localPort);
+
+            // 2026-11-20: advertise our own candidates so the peer can try more
+            // than the one address the rendezvous saw us use. The STUN query
+            // runs on a throwaway socket bound to the SAME port we are about to
+            // punch from, so the mapping we report is the mapping the game will
+            // actually present. Both sides do this concurrently and the server
+            // relays; neither waits for the other, so a slow STUN server can
+            // only cost us a candidate, never the match.
+            var ourCandidates = await GatherCandidatesAsync(localPort, p.Session);
+            var peerCandidates = new TaskCompletionSource<string[]>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            _peerCandidateTcs = peerCandidates;
+            await Client.SendCandidatesAsync(p.Session, ourCandidates);
+            NetLog.Write($"candidates: sent {ourCandidates.Length} ({string.Join(", ", ourCandidates)})");
+
             result = await PunchService.PunchAsync(p.Session, p.Role, rendezvous, localPort,
-                _peerTcs?.Task);
+                _peerTcs?.Task,
+                peerCandidates: await WaitBriefly(peerCandidates.Task, TimeSpan.FromSeconds(2)));
         }
         else
         {
@@ -369,18 +396,6 @@ public class MatchViewModel : ObservableObject
         var sessionId = _paired?.Session ?? "";
         var durationS = ElapsedS;
 
-        AppServices.History.Add(new HistoryEntry
-        {
-            When = DateTime.Now,
-            GameId = _paired?.Game ?? GameName,
-            GameName = GameName,
-            Opponent = Opponent,
-            Outcome = outcome,
-            DurationS = ElapsedS,
-            PingMs = PingMs,
-            Relayed = Relayed,
-        });
-
         if (sessionId.Length > 0)
             _ = Client.SendAsync(new ResultMsg { Session = sessionId, Outcome = outcome, DurationS = durationS });
 
@@ -434,6 +449,57 @@ public class MatchViewModel : ObservableObject
         CancelCommand.RaiseCanExecute();
     }
 
+    /// <summary>
+    /// The addresses we are willing to be reached at, best effort (2026-11-20).
+    ///
+    /// Host candidates come from the local interfaces and always cost nothing.
+    /// The server-reflexive candidate needs a STUN round trip, and is deliberately
+    /// bounded twice over: once by the 1.2 s STUN budget, and once by only asking
+    /// until the first server answers. A restrictive network that blocks both
+    /// STUN servers just yields no reflexive candidate, which is the same
+    /// behaviour as before this existed.
+    /// </summary>
+    private static async Task<string[]> GatherCandidatesAsync(int port, string session)
+    {
+        var list = new List<string>();
+        var host = StunClient.LocalCandidates(port);
+        foreach (var c in host) list.Add(c.Endpoint);
+
+        // The STUN query needs its own socket bound to the SAME port the punch
+        // uses, so the mapping reported is the one the game will present. It
+        // runs on a throwaway UdpClient and closes straight after.
+        UdpClient? probe = null;
+        try
+        {
+            probe = new UdpClient(AddressFamily.InterNetwork);
+            probe.Client.Bind(new IPEndPoint(IPAddress.Any, port));
+            foreach (var server in StunClient.DefaultServers)
+            {
+                var ep = await StunClient.QueryAsync(probe, server);
+                if (ep is null) continue;
+                var s = ep.ToString();
+                if (!list.Contains(s, StringComparer.OrdinalIgnoreCase)) list.Add(s);
+                break;                       // one reflexive candidate is enough
+            }
+        }
+        catch (SocketException) { }
+        catch (ObjectDisposedException) { }
+        finally
+        {
+            try { probe?.Dispose(); } catch { }
+        }
+        return list.ToArray();
+    }
+
+    /// <summary>Give a task `max` to finish, then stop waiting and move on with
+    /// whatever it has. Used for the peer's candidate list: it is an
+    /// optimisation, so a peer that never sends one must not delay the punch.</summary>
+    private static async Task<string[]> WaitBriefly(Task<string[]> task, TimeSpan max)
+    {
+        var done = await Task.WhenAny(task, Task.Delay(max)).ConfigureAwait(false);
+        return done == task && task.IsCompletedSuccessfully ? task.Result : Array.Empty<string>();
+    }
+
     private void CancelInternal(bool keepResult = false)
     {
         _bootCancelled = true;   // the background boot task must stand down
@@ -452,6 +518,7 @@ public class MatchViewModel : ObservableObject
         _paired = null;
         _peer = null;
         _peerTcs = null;
+        _peerCandidateTcs = null;
         if (!keepResult) DisposeLauncher();
         CancelCommand.RaiseCanExecute();
     }

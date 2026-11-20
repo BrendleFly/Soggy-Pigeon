@@ -80,7 +80,6 @@ public partial class MainWindow : Window
                 {
                     AppPage.Play => new Views.PlayView { DataContext = _vm.Play },
                     AppPage.Games => new Views.GamesView { DataContext = _vm.Play },
-                    AppPage.History => new Views.HistoryView { DataContext = _vm.HistoryVm },
                     AppPage.Settings => new Views.SettingsView { DataContext = _vm.Settings },
                     _ => null,
                 };
@@ -92,7 +91,6 @@ public partial class MainWindow : Window
 
             SetActive(NavPlay, AppPage.Play);
             SetActive(NavGames, AppPage.Games);
-            SetActive(NavHistory, AppPage.History);
             SetActive(NavSettings, AppPage.Settings);
         }
         finally { _syncingPage = false; }
